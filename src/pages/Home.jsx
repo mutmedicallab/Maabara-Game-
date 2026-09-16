@@ -1,8 +1,11 @@
 import { Link } from 'react-router-dom'
+import DuelingMascots from '../components/DuelingMascots.jsx'
 
 export default function Home() {
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12 gap-10">
+      <DuelingMascots />
+
       <div className="w-full max-w-md">
         <div className="mb-10 text-center">
           <p className="font-mono text-xs uppercase tracking-wide text-ink/50 mb-2">
@@ -12,7 +15,7 @@ export default function Home() {
             Titer<span className="text-violet"> Up</span>
           </h1>
           <p className="text-ink/60 mt-3">
-            A live quiz for the lab. One host, one code, everyone's phone.
+            First to the well wins. One code, everyone's phone, all the bragging rights.
           </p>
         </div>
 

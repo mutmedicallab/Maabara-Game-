@@ -46,3 +46,59 @@ body {
     transition-duration: 0.001ms !important;
   }
 }
+@keyframes duel-slide-left {
+  from { transform: translateX(-60px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes duel-slide-right {
+  from { transform: translateX(60px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes duel-bob {
+  0%, 100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-6px) rotate(2deg); }
+}
+@keyframes duel-jab-left {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(14px); }
+}
+@keyframes duel-jab-right {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(-14px); }
+}
+@keyframes duel-burst-pop {
+  0% { transform: scale(0); opacity: 0; }
+  15% { transform: scale(1); opacity: 1; }
+  40%, 100% { transform: scale(1.3); opacity: 0; }
+}
+@keyframes duel-blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  96% { transform: scaleY(0.1); }
+}
+
+.duel-left {
+  animation:
+    duel-slide-left 0.5s ease-out both,
+    duel-bob 2.4s ease-in-out 0.5s infinite;
+}
+.duel-right {
+  animation:
+    duel-slide-right 0.5s ease-out both,
+    duel-bob 2.6s ease-in-out 0.5s infinite;
+}
+.duel-glove-left {
+  animation: duel-jab-left 2.4s ease-in-out 0.5s infinite;
+  transform-origin: 150px 150px;
+}
+.duel-glove-right {
+  animation: duel-jab-right 2.6s ease-in-out 0.5s infinite;
+  transform-origin: 250px 150px;
+}
+.duel-burst {
+  animation: duel-burst-pop 2.4s ease-out 0.9s infinite;
+}
+.duel-eye {
+  animation: duel-blink 4s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
