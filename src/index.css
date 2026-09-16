@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Space Grotesk", "Segoe UI", sans-serif;
+  --font-sans: "Work Sans", "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --color-ink: #15201c;
+  --color-paper: #eef1ea;
+  --color-paper-dim: #e2e6da;
+  --color-violet: #5b3a8e;
+  --color-violet-dim: #47306e;
+  --color-safranin: #c8553d;
+  --color-culture: #3f7d58;
+  --color-amber: #d99a3d;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+/* subtle fixed grain/texture so flat panels don't look like default SaaS cards */
+.lab-panel {
+  background-color: white;
+  border: 1px solid rgba(21, 32, 28, 0.14);
+}
+
+.lab-rule {
+  border-top: 1px solid rgba(21, 32, 28, 0.14);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
