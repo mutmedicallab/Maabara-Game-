@@ -5,6 +5,8 @@ import { useGameState } from '../hooks/useGameState'
 import { useInterval } from '../hooks/useInterval'
 import Timer from '../components/Timer.jsx'
 import OptionGrid from '../components/OptionGrid.jsx'
+import TextAnswerInput from '../components/TextAnswerInput.jsx'
+import ScalePicker from '../components/ScalePicker.jsx'
 import Leaderboard from '../components/Leaderboard.jsx'
 
 const STORAGE_KEY = 'titer-up:player-session'
@@ -16,7 +18,7 @@ export default function Join() {
     return raw ? JSON.parse(raw) : null // { player_id, game_id, code, nickname }
   })
   const [players, setPlayers] = useState([])
-  const [answered, setAnswered] = useState({}) // question_id -> { selectedIndex, result }
+  const [answered, setAnswered] = useState({}) // question_id -> { payload, result }
   const answeringRef = useRef(false)
 
   const { state, refresh } = useGameState(session?.code)
@@ -31,15 +33,14 @@ export default function Join() {
 
   useInterval(refreshPlayers, session?.game_id ? 1500 : null)
 
-  async function handleAnswer(questionId, index) {
+  async function handleAnswer(questionId, payload) {
     if (answeringRef.current || answered[questionId]) return
     answeringRef.current = true
     try {
-      const result = await submitAnswer(session.game_id, session.player_id, questionId, index)
-      setAnswered((prev) => ({ ...prev, [questionId]: { selectedIndex: index, result } }))
+      const result = await submitAnswer(session.game_id, session.player_id, questionId, payload)
+      setAnswered((prev) => ({ ...prev, [questionId]: { payload, result } }))
       refreshPlayers()
     } catch (e) {
-      // If it failed, allow another attempt
       console.error(e)
     } finally {
       answeringRef.current = false
@@ -82,7 +83,26 @@ export default function Join() {
           <div className="flex flex-col gap-6">
             <Timer startedAt={state.question_started_at} limitSeconds={state.time_limit} />
             <p className="font-display font-semibold text-xl">{state.question_text}</p>
-            <OptionGrid options={state.options} onSelect={(i) => handleAnswer(state.question_id, i)} />
+
+            {(state.question_type === 'multiple_choice' || state.question_type === 'true_false') && (
+              <OptionGrid
+                options={state.options}
+                onSelect={(i) => handleAnswer(state.question_id, { selectedIndex: i })}
+              />
+            )}
+
+            {state.question_type === 'open_ended' && (
+              <TextAnswerInput onSubmit={(text) => handleAnswer(state.question_id, { textAnswer: text })} />
+            )}
+
+            {state.question_type === 'scale' && (
+              <ScalePicker
+                min={state.scale_min}
+                max={state.scale_max}
+                step={state.scale_step}
+                onSelect={(v) => handleAnswer(state.question_id, { scaleValue: v })}
+              />
+            )}
           </div>
         )}
 
@@ -96,14 +116,37 @@ export default function Join() {
         {state?.status === 'question_end' && (
           <div className="flex flex-col gap-6">
             <p className="font-display font-semibold text-xl">{state.question_text}</p>
-            <OptionGrid
-              options={state.options}
-              correctIndex={state.correct_index}
-              selectedIndex={currentAnswer?.selectedIndex}
-              disabled
-              onSelect={() => {}}
-            />
-            <ResultBanner answer={currentAnswer} />
+
+            {(state.question_type === 'multiple_choice' || state.question_type === 'true_false') && (
+              <OptionGrid
+                options={state.options}
+                correctIndex={state.correct_index}
+                selectedIndex={currentAnswer?.payload?.selectedIndex}
+                disabled
+                onSelect={() => {}}
+              />
+            )}
+
+            {state.question_type === 'open_ended' && (
+              <div className="lab-panel p-5">
+                <p className="font-mono text-xs uppercase tracking-wide text-ink/50 mb-2">Accepted answers</p>
+                <p className="text-ink">{(state.correct_answers || []).join(', ') || '—'}</p>
+                {currentAnswer && (
+                  <p className="text-ink/60 text-sm mt-3">You answered: "{currentAnswer.payload.textAnswer}"</p>
+                )}
+              </div>
+            )}
+
+            {state.question_type === 'scale' && (
+              <div className="lab-panel p-5 text-center">
+                <p className="text-ink/60 text-sm">Thanks for weighing in.</p>
+                {currentAnswer && (
+                  <p className="font-display text-2xl mt-2">You picked {currentAnswer.payload.scaleValue}</p>
+                )}
+              </div>
+            )}
+
+            <ResultBanner answer={currentAnswer} scoreless={state.question_type === 'scale'} />
             <p className="text-center font-mono text-sm text-ink/50">
               Score so far: <span className="text-ink tabular">{me?.score ?? 0}</span>
             </p>
@@ -130,7 +173,7 @@ export default function Join() {
   )
 }
 
-function ResultBanner({ answer }) {
+function ResultBanner({ answer, scoreless }) {
   if (!answer) {
     return (
       <div className="px-5 py-4 bg-ink/5 text-ink/60 text-center font-medium">
@@ -139,6 +182,13 @@ function ResultBanner({ answer }) {
     )
   }
   const { result } = answer
+  if (scoreless) {
+    return (
+      <div className="px-5 py-4 bg-violet/10 border border-violet/30 text-violet text-center font-semibold">
+        Recorded · +{result?.points_awarded ?? 0} points
+      </div>
+    )
+  }
   if (result?.is_correct) {
     return (
       <div className="px-5 py-4 bg-culture/10 border border-culture/30 text-culture text-center font-semibold">

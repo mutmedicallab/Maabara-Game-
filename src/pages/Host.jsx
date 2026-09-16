@@ -8,6 +8,9 @@ import {
   nextQuestion,
   getPlayers,
   getAnswerCounts,
+  getOpenEndedAnswers,
+  getScaleStats,
+  getScaleDistribution,
 } from '../lib/game'
 import { useGameState } from '../hooks/useGameState'
 import { useInterval } from '../hooks/useInterval'
@@ -29,7 +32,12 @@ export default function Host() {
   const [creating, setCreating] = useState(false)
   const [actionError, setActionError] = useState(null)
   const [players, setPlayers] = useState([])
-  const [answerCounts, setAnswerCounts] = useState([])
+
+  const [mcCounts, setMcCounts] = useState([])
+  const [openAnswers, setOpenAnswers] = useState([])
+  const [scaleStats, setScaleStats] = useState(null)
+  const [scaleDist, setScaleDist] = useState([])
+
   const endedRef = useRef(false) // guards against double-firing end_question on timer expiry
 
   const { state, refresh } = useGameState(session?.code)
@@ -55,10 +63,16 @@ export default function Host() {
   }, [state?.current_question_index])
 
   useEffect(() => {
-    if (state?.status === 'question_end' && session?.id && state?.question_id) {
-      getAnswerCounts(session.id, state.question_id).then(setAnswerCounts).catch(() => {})
+    if (state?.status !== 'question_end' || !session?.id || !state?.question_id) return
+    if (state.question_type === 'multiple_choice' || state.question_type === 'true_false') {
+      getAnswerCounts(session.id, state.question_id).then(setMcCounts).catch(() => {})
+    } else if (state.question_type === 'open_ended') {
+      getOpenEndedAnswers(session.id, state.question_id).then(setOpenAnswers).catch(() => {})
+    } else if (state.question_type === 'scale') {
+      getScaleStats(session.id, state.question_id).then(setScaleStats).catch(() => {})
+      getScaleDistribution(session.id, state.question_id).then(setScaleDist).catch(() => {})
     }
-  }, [state?.status, state?.question_id, session?.id])
+  }, [state?.status, state?.question_id, state?.question_type, session?.id])
 
   async function handleCreateGame(quizId) {
     setCreating(true)
@@ -102,7 +116,10 @@ export default function Host() {
 
   async function handleNext() {
     try {
-      setAnswerCounts([])
+      setMcCounts([])
+      setOpenAnswers([])
+      setScaleStats(null)
+      setScaleDist([])
       await nextQuestion(session.id, session.host_token)
       refresh()
       refreshPlayers()
@@ -115,7 +132,10 @@ export default function Host() {
     sessionStorage.removeItem(STORAGE_KEY)
     setSession(null)
     setPlayers([])
-    setAnswerCounts([])
+    setMcCounts([])
+    setOpenAnswers([])
+    setScaleStats(null)
+    setScaleDist([])
   }
 
   return (
@@ -167,7 +187,7 @@ export default function Host() {
                 onExpire={handleTimerExpire}
               />
               <p className="font-display font-semibold text-2xl mt-6 mb-5">{state.question_text}</p>
-              <OptionGrid options={state.options} disabled onSelect={() => {}} />
+              {renderLiveBody(state)}
             </div>
             <button
               onClick={handleEndNow}
@@ -183,13 +203,65 @@ export default function Host() {
             <QuestionHeader state={state} />
             <div className="lab-panel p-6">
               <p className="font-display font-semibold text-2xl mb-5">{state.question_text}</p>
-              <OptionGrid
-                options={state.options}
-                correctIndex={state.correct_index}
-                counts={answerCounts}
-                disabled
-                onSelect={() => {}}
-              />
+
+              {(state.question_type === 'multiple_choice' || state.question_type === 'true_false') && (
+                <OptionGrid
+                  options={state.options}
+                  correctIndex={state.correct_index}
+                  counts={mcCounts}
+                  disabled
+                  onSelect={() => {}}
+                />
+              )}
+
+              {state.question_type === 'open_ended' && (
+                <div>
+                  <p className="font-mono text-xs uppercase tracking-wide text-ink/50 mb-3">
+                    Accepted: {(state.correct_answers || []).join(', ') || '—'}
+                  </p>
+                  <ul className="flex flex-col gap-2">
+                    {openAnswers.map((a, i) => (
+                      <li
+                        key={i}
+                        className={`px-4 py-2 flex justify-between ${
+                          a.is_correct ? 'bg-culture/10 text-culture' : 'bg-ink/5 text-ink/70'
+                        }`}
+                      >
+                        <span className="font-medium">{a.nickname}</span>
+                        <span>{a.text_answer}</span>
+                      </li>
+                    ))}
+                    {openAnswers.length === 0 && <li className="text-ink/50 text-sm">No answers submitted.</li>}
+                  </ul>
+                </div>
+              )}
+
+              {state.question_type === 'scale' && (
+                <div>
+                  <p className="font-mono text-xs uppercase tracking-wide text-ink/50 mb-3">
+                    Average: {scaleStats?.average ? Number(scaleStats.average).toFixed(1) : '—'} ·{' '}
+                    {scaleStats?.responses ?? 0} responses
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    {scaleDist.map((d) => {
+                      const max = Math.max(1, ...scaleDist.map((x) => Number(x.count)))
+                      return (
+                        <div key={d.value} className="flex items-center gap-3">
+                          <span className="font-mono text-sm w-8 tabular">{d.value}</span>
+                          <div className="flex-1 h-4 bg-paper-dim">
+                            <div
+                              className="h-full bg-culture"
+                              style={{ width: `${(Number(d.count) / max) * 100}%` }}
+                            />
+                          </div>
+                          <span className="font-mono text-xs tabular text-ink/50">{d.count}</span>
+                        </div>
+                      )
+                    })}
+                    {scaleDist.length === 0 && <p className="text-ink/50 text-sm">No responses submitted.</p>}
+                  </div>
+                </div>
+              )}
             </div>
             <Leaderboard players={players} title="Standings" />
             <button
@@ -221,6 +293,23 @@ export default function Host() {
       </div>
     </div>
   )
+}
+
+function renderLiveBody(state) {
+  if (state.question_type === 'multiple_choice' || state.question_type === 'true_false') {
+    return <OptionGrid options={state.options} disabled onSelect={() => {}} />
+  }
+  if (state.question_type === 'open_ended') {
+    return <p className="text-ink/60">Players are typing their answers…</p>
+  }
+  if (state.question_type === 'scale') {
+    return (
+      <p className="text-ink/60">
+        Players are choosing a value from {state.scale_min} to {state.scale_max}…
+      </p>
+    )
+  }
+  return null
 }
 
 function QuestionHeader({ state }) {

@@ -46,6 +46,12 @@ export default function Home() {
             <span className="font-mono text-xl">&rarr;</span>
           </Link>
         </div>
+
+        <p className="text-center mt-8">
+          <Link to="/build" className="font-mono text-xs uppercase tracking-wide text-ink/40 hover:text-ink/70">
+            Manage quizzes
+          </Link>
+        </p>
       </div>
     </div>
   )
