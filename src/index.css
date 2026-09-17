@@ -102,3 +102,10 @@ body {
   transform-box: fill-box;
   transform-origin: center;
 }
+@keyframes intro-pop {
+  0% { transform: scale(0.85); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-intro-pop {
+  animation: intro-pop 0.35s ease-out both;
+}

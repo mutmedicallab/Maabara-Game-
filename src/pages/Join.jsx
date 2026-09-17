@@ -9,6 +9,8 @@ import TextAnswerInput from '../components/TextAnswerInput.jsx'
 import ScalePicker from '../components/ScalePicker.jsx'
 import OrderPuzzle from '../components/OrderPuzzle.jsx'
 import Leaderboard from '../components/Leaderboard.jsx'
+import { useQuestionIntro } from '../hooks/useQuestionIntro'
+import QuestionIntro from '../components/QuestionIntro.jsx'
 
 const STORAGE_KEY = 'titer-up:player-session'
 const CHOICE_TYPES = ['multiple_choice', 'true_false', 'poll']
@@ -26,6 +28,7 @@ export default function Join() {
   const answeringRef = useRef(false)
 
   const { state, refresh } = useGameState(session?.code)
+  const showingIntro = useQuestionIntro(state?.question_id)
 
   useEffect(() => {
     setPending([])
@@ -90,11 +93,20 @@ export default function Join() {
             <p className="text-ink/60">Waiting for the host to start the quiz…</p>
           </div>
         )}
+        {state?.status === 'question' && state.question_id && showingIntro && (
+  <QuestionIntro
+    questionType={state.question_type}
+    pointsMultiplier={state.points_multiplier}
+    allowMultiple={state.allow_multiple}
+    questionNumber={state.current_question_index + 1}
+    totalQuestions={state.total_questions}
+  />
+)}
 
-        {state?.status === 'question' && !currentAnswer && state.question_id && (
-          <div className="flex flex-col gap-6">
-            <Timer startedAt={state.question_started_at} limitSeconds={state.time_limit} />
-            <p className="font-display font-semibold text-xl">{state.question_text}</p>
+        {state?.status === 'question' && !currentAnswer && state.question_id && !showingIntro && (
+  <div className="flex flex-col gap-6">
+    <Timer startedAt={state.question_started_at} limitSeconds={state.time_limit} />
+    <p className="font-display font-semibold text-xl">{state.question_text}</p>
 
             {CHOICE_TYPES.includes(state.question_type) && !state.allow_multiple && (
               <OptionGrid options={state.options} onToggle={(i) => handleAnswer(state.question_id, { selectedIndexes: [i] })} />

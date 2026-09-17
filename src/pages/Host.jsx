@@ -21,6 +21,8 @@ import Timer from '../components/Timer.jsx'
 import OptionGrid from '../components/OptionGrid.jsx'
 import Leaderboard from '../components/Leaderboard.jsx'
 import WordCloud from '../components/WordCloud.jsx'
+import { useQuestionIntro } from '../hooks/useQuestionIntro'
+import QuestionIntro from '../components/QuestionIntro.jsx'
 
 const STORAGE_KEY = 'titer-up:host-session'
 const CHOICE_TYPES = ['multiple_choice', 'true_false', 'poll']
@@ -47,6 +49,7 @@ export default function Host() {
   const endedRef = useRef(false)
 
   const { state, refresh } = useGameState(session?.code)
+  const showingIntro = useQuestionIntro(state?.question_id)
 
   useEffect(() => {
     if (!session) {
@@ -186,22 +189,35 @@ export default function Host() {
           </div>
         )}
 
-        {session && state?.status === 'question' && (
-          <div className="flex flex-col gap-6">
-            <QuestionHeader state={state} />
-            <div className="lab-panel p-6">
-              <Timer startedAt={state.question_started_at} limitSeconds={state.time_limit} onExpire={handleTimerExpire} />
-              <p className="font-display font-semibold text-2xl mt-6 mb-5">{state.question_text}</p>
-              {renderLiveBody(state)}
-            </div>
-            <button
-              onClick={handleEndNow}
-              className="lab-panel px-6 py-3 font-mono text-sm uppercase tracking-wide hover:bg-ink hover:text-paper transition-colors"
-            >
-              End question now
-            </button>
-          </div>
-        )}
+        {session && state?.status === 'question' && showingIntro && (
+  <div className="flex flex-col gap-6">
+    <QuestionHeader state={state} />
+    <QuestionIntro
+      questionType={state.question_type}
+      pointsMultiplier={state.points_multiplier}
+      allowMultiple={state.allow_multiple}
+      questionNumber={state.current_question_index + 1}
+      totalQuestions={state.total_questions}
+    />
+  </div>
+)}
+
+{session && state?.status === 'question' && !showingIntro && (
+  <div className="flex flex-col gap-6">
+    <QuestionHeader state={state} />
+    <div className="lab-panel p-6">
+      <Timer startedAt={state.question_started_at} limitSeconds={state.time_limit} onExpire={handleTimerExpire} />
+      <p className="font-display font-semibold text-2xl mt-6 mb-5">{state.question_text}</p>
+      {renderLiveBody(state)}
+    </div>
+    <button
+      onClick={handleEndNow}
+      className="lab-panel px-6 py-3 font-mono text-sm uppercase tracking-wide hover:bg-ink hover:text-paper transition-colors"
+    >
+      End question now
+    </button>
+  </div>
+)}
 
         {session && state?.status === 'question_end' && (
           <div className="flex flex-col gap-6">

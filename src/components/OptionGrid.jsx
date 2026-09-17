@@ -1,6 +1,38 @@
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F']
 const COLORS = ['bg-violet', 'bg-safranin', 'bg-culture', 'bg-amber']
 
+function Shape({ index }) {
+  // Kahoot-style shape-per-position, so options are recognizable at a glance
+  // even before reading the text. Pure inline SVG, no image assets.
+  const common = { width: 16, height: 16, fill: 'currentColor' }
+  switch (index % 4) {
+    case 0: // triangle
+      return (
+        <svg viewBox="0 0 16 16" {...common}>
+          <polygon points="8,1 15,15 1,15" />
+        </svg>
+      )
+    case 1: // diamond
+      return (
+        <svg viewBox="0 0 16 16" {...common}>
+          <polygon points="8,1 15,8 8,15 1,8" />
+        </svg>
+      )
+    case 2: // circle
+      return (
+        <svg viewBox="0 0 16 16" {...common}>
+          <circle cx="8" cy="8" r="7" />
+        </svg>
+      )
+    default: // square
+      return (
+        <svg viewBox="0 0 16 16" {...common}>
+          <rect x="1.5" y="1.5" width="13" height="13" />
+        </svg>
+      )
+  }
+}
+
 // selectedIndexes / correctIndexes are arrays so this works for both
 // single-select (array of 0-1 items) and multi-select questions.
 // onToggle(index) fires on every click; the caller decides whether that
@@ -38,8 +70,9 @@ export default function OptionGrid({
               disabled ? '' : 'cursor-pointer hover:brightness-110'
             } ${isSelected && !revealed ? 'ring-4 ring-ink/40' : ''}`}
           >
-            <span className="font-mono font-semibold text-sm bg-white/20 rounded-none px-2 py-1">
-              {LETTERS[i]}
+            <span className="flex items-center gap-2 bg-white/20 px-2 py-1">
+              <Shape index={i} />
+              <span className="font-mono font-semibold text-sm">{LETTERS[i]}</span>
             </span>
             <span className="font-medium flex-1">{opt}</span>
             {count !== null && <span className="font-mono text-sm tabular opacity-80">{count}</span>}
