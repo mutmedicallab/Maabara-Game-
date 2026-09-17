@@ -36,17 +36,26 @@ export const endQuestion = (gameId, hostToken) =>
 export const nextQuestion = (gameId, hostToken) =>
   call('next_question', { p_game_id: gameId, p_host_token: hostToken })
 
-// Pass only the field relevant to the question's type -- e.g. { selectedIndex: 2 }
-// for multiple_choice/true_false, { textAnswer: 'foo' } for open_ended,
-// { scaleValue: 4 } for scale. Grading happens server-side either way.
-export const submitAnswer = async (gameId, playerId, questionId, { selectedIndex, textAnswer, scaleValue } = {}) => {
+// Pass only the field relevant to the question's type:
+//   { selectedIndexes: [1] }        multiple_choice / true_false / poll (single)
+//   { selectedIndexes: [0, 2] }     multiple_choice / poll with allow_multiple
+//   { textAnswer: 'EDTA' }          open_ended / word_cloud
+//   { scaleValue: 4 }               scale
+//   { orderAnswer: [2, 0, 1, 3] }   order (puzzle)
+export const submitAnswer = async (
+  gameId,
+  playerId,
+  questionId,
+  { selectedIndexes, textAnswer, scaleValue, orderAnswer } = {},
+) => {
   const rows = await call('submit_answer', {
     p_game_id: gameId,
     p_player_id: playerId,
     p_question_id: questionId,
-    p_selected_index: selectedIndex ?? null,
+    p_selected_indexes: selectedIndexes ?? null,
     p_text_answer: textAnswer ?? null,
     p_scale_value: scaleValue ?? null,
+    p_order_answer: orderAnswer ?? null,
   })
   return rows?.[0] ?? null
 }
@@ -64,3 +73,9 @@ export const getScaleStats = async (gameId, questionId) => {
 
 export const getScaleDistribution = (gameId, questionId) =>
   call('get_scale_distribution', { p_game_id: gameId, p_question_id: questionId })
+
+export const getWordCloud = (gameId, questionId) =>
+  call('get_word_cloud', { p_game_id: gameId, p_question_id: questionId })
+
+export const getOrderResults = (gameId, questionId) =>
+  call('get_order_results', { p_game_id: gameId, p_question_id: questionId })

@@ -15,7 +15,12 @@ const TYPE_LABELS = {
   true_false: 'True / False',
   open_ended: 'Type an answer',
   scale: 'Scale (poll)',
+  poll: 'Poll',
+  word_cloud: 'Word cloud',
+  order: 'Puzzle (order)',
 }
+
+const GRADED_TYPES = ['multiple_choice', 'true_false', 'open_ended', 'order']
 
 function blankQuestion(type = 'multiple_choice') {
   return {
@@ -23,25 +28,32 @@ function blankQuestion(type = 'multiple_choice') {
     question_text: '',
     time_limit: 20,
     options: ['', '', '', ''],
-    correct_index: 0,
+    correct_indexes: [0],
     correct_answers_text: '',
     scale_min: 1,
     scale_max: 5,
     scale_step: 1,
+    allow_multiple: false,
+    points_multiplier: 1,
   }
 }
 
 function fromServerQuestion(sq) {
+  const isIndexBased = ['multiple_choice', 'true_false'].includes(sq.question_type)
   return {
     question_type: sq.question_type,
     question_text: sq.question_text || '',
     time_limit: sq.time_limit ?? 20,
-    options: sq.question_type === 'multiple_choice' && sq.options?.length ? sq.options : ['', '', '', ''],
-    correct_index: sq.correct_index ?? 0,
-    correct_answers_text: (sq.correct_answers || []).join(', '),
+    options: ['multiple_choice', 'true_false', 'poll', 'order'].includes(sq.question_type) && sq.options?.length
+      ? sq.options
+      : ['', '', '', ''],
+    correct_indexes: isIndexBased && Array.isArray(sq.correct_answers) ? sq.correct_answers.map(Number) : [0],
+    correct_answers_text: sq.question_type === 'open_ended' ? (sq.correct_answers || []).join(', ') : '',
     scale_min: sq.scale_min ?? 1,
     scale_max: sq.scale_max ?? 5,
     scale_step: sq.scale_step ?? 1,
+    allow_multiple: sq.allow_multiple ?? false,
+    points_multiplier: sq.points_multiplier ?? 1,
   }
 }
 
@@ -50,16 +62,28 @@ function toPayload(q) {
     question_type: q.question_type,
     question_text: q.question_text.trim(),
     time_limit: Number(q.time_limit) || 20,
+    points_multiplier: GRADED_TYPES.includes(q.question_type) ? q.points_multiplier : 1,
   }
   if (q.question_type === 'multiple_choice') {
     return {
       ...base,
       options: q.options.map((o) => o.trim()).filter(Boolean),
-      correct_index: q.correct_index,
+      correct_answers: q.correct_indexes,
+      allow_multiple: q.allow_multiple,
     }
   }
   if (q.question_type === 'true_false') {
-    return { ...base, options: ['True', 'False'], correct_index: q.correct_index }
+    return { ...base, options: ['True', 'False'], correct_answers: q.correct_indexes }
+  }
+  if (q.question_type === 'poll') {
+    return {
+      ...base,
+      options: q.options.map((o) => o.trim()).filter(Boolean),
+      allow_multiple: q.allow_multiple,
+    }
+  }
+  if (q.question_type === 'word_cloud') {
+    return base
   }
   if (q.question_type === 'open_ended') {
     return {
@@ -78,6 +102,14 @@ function toPayload(q) {
       scale_step: Number(q.scale_step) || 1,
     }
   }
+  if (q.question_type === 'order') {
+    const items = q.options.map((o) => o.trim()).filter(Boolean)
+    return {
+      ...base,
+      options: items,
+      correct_answers: items.map((_, i) => i), // options are authored in the correct order
+    }
+  }
   return base
 }
 
@@ -89,15 +121,21 @@ function validate(title, questions) {
     if (q.question_type === 'multiple_choice') {
       const filled = q.options.filter((o) => o.trim())
       if (filled.length < 2) return `Question ${i + 1} needs at least 2 options.`
-      if (q.correct_index >= q.options.length || !q.options[q.correct_index]?.trim()) {
-        return `Question ${i + 1}: pick a correct option that has text.`
-      }
+      if (q.correct_indexes.length === 0) return `Question ${i + 1}: mark at least one correct option.`
+    }
+    if (q.question_type === 'poll') {
+      const filled = q.options.filter((o) => o.trim())
+      if (filled.length < 2) return `Question ${i + 1} needs at least 2 options.`
     }
     if (q.question_type === 'open_ended' && !q.correct_answers_text.trim()) {
       return `Question ${i + 1} needs at least one accepted answer.`
     }
     if (q.question_type === 'scale' && Number(q.scale_min) >= Number(q.scale_max)) {
       return `Question ${i + 1}: scale max must be greater than min.`
+    }
+    if (q.question_type === 'order') {
+      const filled = q.options.filter((o) => o.trim())
+      if (filled.length < 3) return `Question ${i + 1} needs at least 3 items, listed in the correct order.`
     }
   }
   return null
@@ -111,7 +149,7 @@ export default function Builder() {
   const [loadingList, setLoadingList] = useState(true)
   const [error, setError] = useState(null)
 
-  const [editingId, setEditingId] = useState(null) // null = not editing, 'new' = creating
+  const [editingId, setEditingId] = useState(null)
   const [title, setTitle] = useState('')
   const [questions, setQuestions] = useState([])
   const [saving, setSaving] = useState(false)
@@ -186,8 +224,22 @@ export default function Builder() {
       prev.map((q, i) => {
         if (i !== qIndex || q.options.length <= 2) return q
         const options = q.options.filter((_, oi) => oi !== optIndex)
-        const correct_index = q.correct_index >= options.length ? 0 : q.correct_index
-        return { ...q, options, correct_index }
+        const correct_indexes = q.correct_indexes.filter((ci) => ci !== optIndex).map((ci) => (ci > optIndex ? ci - 1 : ci))
+        return { ...q, options, correct_indexes: correct_indexes.length ? correct_indexes : [0] }
+      }),
+    )
+  }
+
+  function toggleCorrectIndex(qIndex, optIndex) {
+    setQuestions((prev) =>
+      prev.map((q, i) => {
+        if (i !== qIndex) return q
+        if (q.allow_multiple) {
+          const has = q.correct_indexes.includes(optIndex)
+          const correct_indexes = has ? q.correct_indexes.filter((x) => x !== optIndex) : [...q.correct_indexes, optIndex]
+          return { ...q, correct_indexes }
+        }
+        return { ...q, correct_indexes: [optIndex] }
       }),
     )
   }
@@ -336,6 +388,7 @@ export default function Builder() {
                 onChangeOption={(oi, value) => updateOption(qi, oi, value)}
                 onAddOption={() => addOption(qi)}
                 onRemoveOption={(oi) => removeOption(qi, oi)}
+                onToggleCorrect={(oi) => toggleCorrectIndex(qi, oi)}
                 onRemove={() => removeQuestion(qi)}
               />
             ))}
@@ -363,7 +416,7 @@ export default function Builder() {
   )
 }
 
-function QuestionEditor({ q, index, onChangeType, onChangeField, onChangeOption, onAddOption, onRemoveOption, onRemove }) {
+function QuestionEditor({ q, index, onChangeType, onChangeField, onChangeOption, onAddOption, onRemoveOption, onToggleCorrect, onRemove }) {
   return (
     <div className="lab-panel p-5 flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -388,21 +441,56 @@ function QuestionEditor({ q, index, onChangeType, onChangeField, onChangeOption,
       <textarea
         value={q.question_text}
         onChange={(e) => onChangeField({ question_text: e.target.value })}
-        placeholder="Question text"
+        placeholder={q.question_type === 'order' ? 'Instruction (e.g. "Put these steps in order")' : 'Question text'}
         rows={2}
         className="w-full px-4 py-3 border border-ink/20 focus:border-violet focus:outline-none resize-none"
       />
 
-      <div className="flex items-center gap-2">
-        <label className="font-mono text-xs uppercase text-ink/50">Time limit (s)</label>
-        <input
-          type="number"
-          min={5}
-          max={120}
-          value={q.time_limit}
-          onChange={(e) => onChangeField({ time_limit: e.target.value })}
-          className="w-20 px-2 py-1 border border-ink/20 focus:border-violet focus:outline-none"
-        />
+      <div className="flex items-center gap-4 flex-wrap">
+        <div className="flex items-center gap-2">
+          <label className="font-mono text-xs uppercase text-ink/50">Time limit (s)</label>
+          <input
+            type="number"
+            min={5}
+            max={120}
+            value={q.time_limit}
+            onChange={(e) => onChangeField({ time_limit: e.target.value })}
+            className="w-20 px-2 py-1 border border-ink/20 focus:border-violet focus:outline-none"
+          />
+        </div>
+
+        {GRADED_TYPES.includes(q.question_type) && (
+          <div className="flex items-center gap-2">
+            <label className="font-mono text-xs uppercase text-ink/50">Points</label>
+            <div className="flex border border-ink/20">
+              <button
+                type="button"
+                onClick={() => onChangeField({ points_multiplier: 1 })}
+                className={`px-3 py-1 text-sm ${q.points_multiplier === 1 ? 'bg-violet text-white' : 'hover:bg-ink/5'}`}
+              >
+                Standard
+              </button>
+              <button
+                type="button"
+                onClick={() => onChangeField({ points_multiplier: 2 })}
+                className={`px-3 py-1 text-sm ${q.points_multiplier === 2 ? 'bg-violet text-white' : 'hover:bg-ink/5'}`}
+              >
+                Double
+              </button>
+            </div>
+          </div>
+        )}
+
+        {['multiple_choice', 'poll'].includes(q.question_type) && (
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={q.allow_multiple}
+              onChange={(e) => onChangeField({ allow_multiple: e.target.checked, correct_indexes: [0] })}
+            />
+            Allow multiple answers
+          </label>
+        )}
       </div>
 
       {q.question_type === 'multiple_choice' && (
@@ -410,10 +498,10 @@ function QuestionEditor({ q, index, onChangeType, onChangeField, onChangeOption,
           {q.options.map((opt, oi) => (
             <div key={oi} className="flex items-center gap-2">
               <input
-                type="radio"
+                type={q.allow_multiple ? 'checkbox' : 'radio'}
                 name={`correct-${index}`}
-                checked={q.correct_index === oi}
-                onChange={() => onChangeField({ correct_index: oi })}
+                checked={q.correct_indexes.includes(oi)}
+                onChange={() => onToggleCorrect(oi)}
                 title="Mark as correct answer"
               />
               <input
@@ -434,7 +522,35 @@ function QuestionEditor({ q, index, onChangeType, onChangeField, onChangeOption,
               + Add option
             </button>
           )}
-          <p className="text-xs text-ink/40">Select the radio button next to the correct option.</p>
+          <p className="text-xs text-ink/40">
+            {q.allow_multiple ? 'Check every correct option.' : 'Select the radio button next to the correct option.'}
+          </p>
+        </div>
+      )}
+
+      {q.question_type === 'poll' && (
+        <div className="flex flex-col gap-2">
+          {q.options.map((opt, oi) => (
+            <div key={oi} className="flex items-center gap-2">
+              <input
+                value={opt}
+                onChange={(e) => onChangeOption(oi, e.target.value)}
+                placeholder={`Option ${oi + 1}`}
+                className="flex-1 px-3 py-2 border border-ink/20 focus:border-violet focus:outline-none"
+              />
+              {q.options.length > 2 && (
+                <button onClick={() => onRemoveOption(oi)} className="text-ink/40 hover:text-safranin px-1">
+                  &times;
+                </button>
+              )}
+            </div>
+          ))}
+          {q.options.length < 6 && (
+            <button onClick={onAddOption} className="font-mono text-xs uppercase text-violet hover:underline self-start">
+              + Add option
+            </button>
+          )}
+          <p className="text-xs text-ink/40">No correct answer — this is a poll, points are for participating.</p>
         </div>
       )}
 
@@ -444,8 +560,8 @@ function QuestionEditor({ q, index, onChangeType, onChangeField, onChangeOption,
             <input
               type="radio"
               name={`tf-${index}`}
-              checked={q.correct_index === 0}
-              onChange={() => onChangeField({ correct_index: 0 })}
+              checked={q.correct_indexes[0] === 0}
+              onChange={() => onChangeField({ correct_indexes: [0] })}
             />
             True
           </label>
@@ -453,8 +569,8 @@ function QuestionEditor({ q, index, onChangeType, onChangeField, onChangeOption,
             <input
               type="radio"
               name={`tf-${index}`}
-              checked={q.correct_index === 1}
-              onChange={() => onChangeField({ correct_index: 1 })}
+              checked={q.correct_indexes[0] === 1}
+              onChange={() => onChangeField({ correct_indexes: [1] })}
             />
             False
           </label>
@@ -471,6 +587,12 @@ function QuestionEditor({ q, index, onChangeType, onChangeField, onChangeOption,
           />
           <p className="text-xs text-ink/40 mt-1">Matching ignores case and extra spaces.</p>
         </div>
+      )}
+
+      {q.question_type === 'word_cloud' && (
+        <p className="text-xs text-ink/40">
+          Players each submit one word or short phrase. No correct answer — you'll see a frequency cloud after.
+        </p>
       )}
 
       {q.question_type === 'scale' && (
@@ -498,6 +620,33 @@ function QuestionEditor({ q, index, onChangeType, onChangeField, onChangeOption,
             className="w-16 px-2 py-1 border border-ink/20 focus:border-violet focus:outline-none"
           />
           <p className="text-xs text-ink/40">No correct answer — this is a poll.</p>
+        </div>
+      )}
+
+      {q.question_type === 'order' && (
+        <div className="flex flex-col gap-2">
+          <p className="text-xs text-ink/40">List items in the CORRECT order — they'll be shuffled for players.</p>
+          {q.options.map((opt, oi) => (
+            <div key={oi} className="flex items-center gap-2">
+              <span className="font-mono text-xs text-ink/40 w-5">{oi + 1}</span>
+              <input
+                value={opt}
+                onChange={(e) => onChangeOption(oi, e.target.value)}
+                placeholder={`Step ${oi + 1}`}
+                className="flex-1 px-3 py-2 border border-ink/20 focus:border-violet focus:outline-none"
+              />
+              {q.options.length > 2 && (
+                <button onClick={() => onRemoveOption(oi)} className="text-ink/40 hover:text-safranin px-1">
+                  &times;
+                </button>
+              )}
+            </div>
+          ))}
+          {q.options.length < 6 && (
+            <button onClick={onAddOption} className="font-mono text-xs uppercase text-violet hover:underline self-start">
+              + Add step
+            </button>
+          )}
         </div>
       )}
     </div>

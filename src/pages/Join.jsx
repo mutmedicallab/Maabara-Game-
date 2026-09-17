@@ -7,21 +7,29 @@ import Timer from '../components/Timer.jsx'
 import OptionGrid from '../components/OptionGrid.jsx'
 import TextAnswerInput from '../components/TextAnswerInput.jsx'
 import ScalePicker from '../components/ScalePicker.jsx'
+import OrderPuzzle from '../components/OrderPuzzle.jsx'
 import Leaderboard from '../components/Leaderboard.jsx'
 
 const STORAGE_KEY = 'titer-up:player-session'
+const CHOICE_TYPES = ['multiple_choice', 'true_false', 'poll']
+const UNGRADED_TYPES = ['scale', 'poll', 'word_cloud']
 
 export default function Join() {
   const [params] = useSearchParams()
   const [session, setSession] = useState(() => {
     const raw = sessionStorage.getItem(STORAGE_KEY)
-    return raw ? JSON.parse(raw) : null // { player_id, game_id, code, nickname }
+    return raw ? JSON.parse(raw) : null
   })
   const [players, setPlayers] = useState([])
-  const [answered, setAnswered] = useState({}) // question_id -> { payload, result }
+  const [answered, setAnswered] = useState({})
+  const [pending, setPending] = useState([])
   const answeringRef = useRef(false)
 
   const { state, refresh } = useGameState(session?.code)
+
+  useEffect(() => {
+    setPending([])
+  }, [state?.question_id])
 
   const refreshPlayers = useCallback(() => {
     if (session?.game_id) getPlayers(session.game_id).then(setPlayers).catch(() => {})
@@ -45,6 +53,10 @@ export default function Join() {
     } finally {
       answeringRef.current = false
     }
+  }
+
+  function togglePending(i) {
+    setPending((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]))
   }
 
   function handleLeave() {
@@ -84,14 +96,24 @@ export default function Join() {
             <Timer startedAt={state.question_started_at} limitSeconds={state.time_limit} />
             <p className="font-display font-semibold text-xl">{state.question_text}</p>
 
-            {(state.question_type === 'multiple_choice' || state.question_type === 'true_false') && (
-              <OptionGrid
-                options={state.options}
-                onSelect={(i) => handleAnswer(state.question_id, { selectedIndex: i })}
-              />
+            {CHOICE_TYPES.includes(state.question_type) && !state.allow_multiple && (
+              <OptionGrid options={state.options} onToggle={(i) => handleAnswer(state.question_id, { selectedIndexes: [i] })} />
             )}
 
-            {state.question_type === 'open_ended' && (
+            {CHOICE_TYPES.includes(state.question_type) && state.allow_multiple && (
+              <div className="flex flex-col gap-4">
+                <OptionGrid options={state.options} selectedIndexes={pending} onToggle={togglePending} />
+                <button
+                  onClick={() => handleAnswer(state.question_id, { selectedIndexes: pending })}
+                  disabled={pending.length === 0}
+                  className="bg-violet text-white font-display font-semibold px-6 py-4 disabled:opacity-40 hover:bg-violet-dim transition-colors"
+                >
+                  Submit answers
+                </button>
+              </div>
+            )}
+
+            {(state.question_type === 'open_ended' || state.question_type === 'word_cloud') && (
               <TextAnswerInput onSubmit={(text) => handleAnswer(state.question_id, { textAnswer: text })} />
             )}
 
@@ -101,6 +123,14 @@ export default function Join() {
                 max={state.scale_max}
                 step={state.scale_step}
                 onSelect={(v) => handleAnswer(state.question_id, { scaleValue: v })}
+              />
+            )}
+
+            {state.question_type === 'order' && (
+              <OrderPuzzle
+                questionId={state.question_id}
+                items={state.options}
+                onSubmit={(order) => handleAnswer(state.question_id, { orderAnswer: order })}
               />
             )}
           </div>
@@ -117,13 +147,13 @@ export default function Join() {
           <div className="flex flex-col gap-6">
             <p className="font-display font-semibold text-xl">{state.question_text}</p>
 
-            {(state.question_type === 'multiple_choice' || state.question_type === 'true_false') && (
+            {CHOICE_TYPES.includes(state.question_type) && (
               <OptionGrid
                 options={state.options}
-                correctIndex={state.correct_index}
-                selectedIndex={currentAnswer?.payload?.selectedIndex}
+                correctIndexes={state.question_type === 'poll' ? undefined : (state.correct_answers || []).map(Number)}
+                selectedIndexes={currentAnswer?.payload?.selectedIndexes || []}
                 disabled
-                onSelect={() => {}}
+                onToggle={() => {}}
               />
             )}
 
@@ -137,16 +167,33 @@ export default function Join() {
               </div>
             )}
 
+            {state.question_type === 'word_cloud' && (
+              <div className="lab-panel p-5 text-center">
+                <p className="text-ink/60 text-sm">Thanks for contributing.</p>
+                {currentAnswer && <p className="font-display text-2xl mt-2">"{currentAnswer.payload.textAnswer}"</p>}
+              </div>
+            )}
+
             {state.question_type === 'scale' && (
               <div className="lab-panel p-5 text-center">
                 <p className="text-ink/60 text-sm">Thanks for weighing in.</p>
+                {currentAnswer && <p className="font-display text-2xl mt-2">You picked {currentAnswer.payload.scaleValue}</p>}
+              </div>
+            )}
+
+            {state.question_type === 'order' && (
+              <div className="lab-panel p-5">
+                <p className="font-mono text-xs uppercase tracking-wide text-ink/50 mb-2">Correct order</p>
+                <p className="text-ink">{state.options?.join(' → ')}</p>
                 {currentAnswer && (
-                  <p className="font-display text-2xl mt-2">You picked {currentAnswer.payload.scaleValue}</p>
+                  <p className="text-ink/60 text-sm mt-3">
+                    You said: {currentAnswer.payload.orderAnswer.map((i) => state.options[i]).join(' → ')}
+                  </p>
                 )}
               </div>
             )}
 
-            <ResultBanner answer={currentAnswer} scoreless={state.question_type === 'scale'} />
+            <ResultBanner answer={currentAnswer} scoreless={UNGRADED_TYPES.includes(state.question_type)} />
             <p className="text-center font-mono text-sm text-ink/50">
               Score so far: <span className="text-ink tabular">{me?.score ?? 0}</span>
             </p>
@@ -175,11 +222,7 @@ export default function Join() {
 
 function ResultBanner({ answer, scoreless }) {
   if (!answer) {
-    return (
-      <div className="px-5 py-4 bg-ink/5 text-ink/60 text-center font-medium">
-        No answer submitted in time
-      </div>
-    )
+    return <div className="px-5 py-4 bg-ink/5 text-ink/60 text-center font-medium">No answer submitted in time</div>
   }
   const { result } = answer
   if (scoreless) {
@@ -239,9 +282,7 @@ function JoinForm({ defaultCode, onJoined }) {
 
         <form onSubmit={handleSubmit} className="lab-panel p-6 flex flex-col gap-4">
           <div>
-            <label className="font-mono text-xs uppercase tracking-wide text-ink/50 block mb-1">
-              Room code
-            </label>
+            <label className="font-mono text-xs uppercase tracking-wide text-ink/50 block mb-1">Room code</label>
             <input
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
@@ -252,9 +293,7 @@ function JoinForm({ defaultCode, onJoined }) {
             />
           </div>
           <div>
-            <label className="font-mono text-xs uppercase tracking-wide text-ink/50 block mb-1">
-              Nickname
-            </label>
+            <label className="font-mono text-xs uppercase tracking-wide text-ink/50 block mb-1">Nickname</label>
             <input
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}

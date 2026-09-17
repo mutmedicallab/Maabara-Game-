@@ -11,6 +11,8 @@ import {
   getOpenEndedAnswers,
   getScaleStats,
   getScaleDistribution,
+  getWordCloud,
+  getOrderResults,
 } from '../lib/game'
 import { useGameState } from '../hooks/useGameState'
 import { useInterval } from '../hooks/useInterval'
@@ -18,13 +20,15 @@ import CodeDisplay from '../components/CodeDisplay.jsx'
 import Timer from '../components/Timer.jsx'
 import OptionGrid from '../components/OptionGrid.jsx'
 import Leaderboard from '../components/Leaderboard.jsx'
+import WordCloud from '../components/WordCloud.jsx'
 
 const STORAGE_KEY = 'titer-up:host-session'
+const CHOICE_TYPES = ['multiple_choice', 'true_false', 'poll']
 
 export default function Host() {
   const [session, setSession] = useState(() => {
     const raw = sessionStorage.getItem(STORAGE_KEY)
-    return raw ? JSON.parse(raw) : null // { id, code, host_token }
+    return raw ? JSON.parse(raw) : null
   })
 
   const [quizzes, setQuizzes] = useState([])
@@ -37,8 +41,10 @@ export default function Host() {
   const [openAnswers, setOpenAnswers] = useState([])
   const [scaleStats, setScaleStats] = useState(null)
   const [scaleDist, setScaleDist] = useState([])
+  const [words, setWords] = useState([])
+  const [orderResults, setOrderResults] = useState([])
 
-  const endedRef = useRef(false) // guards against double-firing end_question on timer expiry
+  const endedRef = useRef(false)
 
   const { state, refresh } = useGameState(session?.code)
 
@@ -64,13 +70,17 @@ export default function Host() {
 
   useEffect(() => {
     if (state?.status !== 'question_end' || !session?.id || !state?.question_id) return
-    if (state.question_type === 'multiple_choice' || state.question_type === 'true_false') {
+    if (CHOICE_TYPES.includes(state.question_type)) {
       getAnswerCounts(session.id, state.question_id).then(setMcCounts).catch(() => {})
     } else if (state.question_type === 'open_ended') {
       getOpenEndedAnswers(session.id, state.question_id).then(setOpenAnswers).catch(() => {})
     } else if (state.question_type === 'scale') {
       getScaleStats(session.id, state.question_id).then(setScaleStats).catch(() => {})
       getScaleDistribution(session.id, state.question_id).then(setScaleDist).catch(() => {})
+    } else if (state.question_type === 'word_cloud') {
+      getWordCloud(session.id, state.question_id).then(setWords).catch(() => {})
+    } else if (state.question_type === 'order') {
+      getOrderResults(session.id, state.question_id).then(setOrderResults).catch(() => {})
     }
   }, [state?.status, state?.question_id, state?.question_type, session?.id])
 
@@ -120,6 +130,8 @@ export default function Host() {
       setOpenAnswers([])
       setScaleStats(null)
       setScaleDist([])
+      setWords([])
+      setOrderResults([])
       await nextQuestion(session.id, session.host_token)
       refresh()
       refreshPlayers()
@@ -136,6 +148,8 @@ export default function Host() {
     setOpenAnswers([])
     setScaleStats(null)
     setScaleDist([])
+    setWords([])
+    setOrderResults([])
   }
 
   return (
@@ -155,12 +169,7 @@ export default function Host() {
         )}
 
         {!session && (
-          <QuizPicker
-            quizzes={quizzes}
-            error={quizError}
-            creating={creating}
-            onPick={handleCreateGame}
-          />
+          <QuizPicker quizzes={quizzes} error={quizError} creating={creating} onPick={handleCreateGame} />
         )}
 
         {session && state?.status === 'lobby' && (
@@ -181,11 +190,7 @@ export default function Host() {
           <div className="flex flex-col gap-6">
             <QuestionHeader state={state} />
             <div className="lab-panel p-6">
-              <Timer
-                startedAt={state.question_started_at}
-                limitSeconds={state.time_limit}
-                onExpire={handleTimerExpire}
-              />
+              <Timer startedAt={state.question_started_at} limitSeconds={state.time_limit} onExpire={handleTimerExpire} />
               <p className="font-display font-semibold text-2xl mt-6 mb-5">{state.question_text}</p>
               {renderLiveBody(state)}
             </div>
@@ -204,13 +209,13 @@ export default function Host() {
             <div className="lab-panel p-6">
               <p className="font-display font-semibold text-2xl mb-5">{state.question_text}</p>
 
-              {(state.question_type === 'multiple_choice' || state.question_type === 'true_false') && (
+              {CHOICE_TYPES.includes(state.question_type) && (
                 <OptionGrid
                   options={state.options}
-                  correctIndex={state.correct_index}
+                  correctIndexes={state.question_type === 'poll' ? undefined : (state.correct_answers || []).map(Number)}
                   counts={mcCounts}
                   disabled
-                  onSelect={() => {}}
+                  onToggle={() => {}}
                 />
               )}
 
@@ -236,6 +241,32 @@ export default function Host() {
                 </div>
               )}
 
+              {state.question_type === 'word_cloud' && <WordCloud words={words} />}
+
+              {state.question_type === 'order' && (
+                <div>
+                  <p className="font-mono text-xs uppercase tracking-wide text-ink/50 mb-3">
+                    Correct order: {state.options?.join(' → ')}
+                  </p>
+                  <ul className="flex flex-col gap-2">
+                    {orderResults.map((r, i) => (
+                      <li
+                        key={i}
+                        className={`px-4 py-2 flex justify-between gap-3 ${
+                          r.is_correct ? 'bg-culture/10 text-culture' : 'bg-ink/5 text-ink/70'
+                        }`}
+                      >
+                        <span className="font-medium shrink-0">{r.nickname}</span>
+                        <span className="text-right text-sm">
+                          {(r.submitted_order || []).map((idx) => state.options[idx]).join(' → ')}
+                        </span>
+                      </li>
+                    ))}
+                    {orderResults.length === 0 && <li className="text-ink/50 text-sm">No answers submitted.</li>}
+                  </ul>
+                </div>
+              )}
+
               {state.question_type === 'scale' && (
                 <div>
                   <p className="font-mono text-xs uppercase tracking-wide text-ink/50 mb-3">
@@ -249,10 +280,7 @@ export default function Host() {
                         <div key={d.value} className="flex items-center gap-3">
                           <span className="font-mono text-sm w-8 tabular">{d.value}</span>
                           <div className="flex-1 h-4 bg-paper-dim">
-                            <div
-                              className="h-full bg-culture"
-                              style={{ width: `${(Number(d.count) / max) * 100}%` }}
-                            />
+                            <div className="h-full bg-culture" style={{ width: `${(Number(d.count) / max) * 100}%` }} />
                           </div>
                           <span className="font-mono text-xs tabular text-ink/50">{d.count}</span>
                         </div>
@@ -268,9 +296,7 @@ export default function Host() {
               onClick={handleNext}
               className="bg-violet text-white font-display font-semibold text-lg px-6 py-4 hover:bg-violet-dim transition-colors"
             >
-              {state.current_question_index + 1 >= state.total_questions
-                ? 'Show final results'
-                : 'Next question'}
+              {state.current_question_index + 1 >= state.total_questions ? 'Show final results' : 'Next question'}
             </button>
           </div>
         )}
@@ -296,12 +322,12 @@ export default function Host() {
 }
 
 function renderLiveBody(state) {
-  if (state.question_type === 'multiple_choice' || state.question_type === 'true_false') {
-    return <OptionGrid options={state.options} disabled onSelect={() => {}} />
+  if (CHOICE_TYPES.includes(state.question_type)) {
+    return <OptionGrid options={state.options} disabled onToggle={() => {}} />
   }
-  if (state.question_type === 'open_ended') {
-    return <p className="text-ink/60">Players are typing their answers…</p>
-  }
+  if (state.question_type === 'open_ended') return <p className="text-ink/60">Players are typing their answers…</p>
+  if (state.question_type === 'word_cloud') return <p className="text-ink/60">Players are submitting words…</p>
+  if (state.question_type === 'order') return <p className="text-ink/60">Players are arranging the steps…</p>
   if (state.question_type === 'scale') {
     return (
       <p className="text-ink/60">
@@ -347,9 +373,7 @@ function QuizPicker({ quizzes, error, creating, onPick }) {
             <span className="font-mono text-xs tabular opacity-70">{q.question_count} Q</span>
           </button>
         ))}
-        {quizzes.length === 0 && !error && (
-          <p className="text-ink/50 text-sm">Loading decks…</p>
-        )}
+        {quizzes.length === 0 && !error && <p className="text-ink/50 text-sm">Loading decks…</p>}
       </div>
     </div>
   )

@@ -1,22 +1,27 @@
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F']
 const COLORS = ['bg-violet', 'bg-safranin', 'bg-culture', 'bg-amber']
 
+// selectedIndexes / correctIndexes are arrays so this works for both
+// single-select (array of 0-1 items) and multi-select questions.
+// onToggle(index) fires on every click; the caller decides whether that
+// means "submit immediately" (single-select) or "update a pending
+// selection" (multi-select, submitted via a separate button).
 export default function OptionGrid({
   options,
-  selectedIndex,
-  correctIndex,
+  selectedIndexes = [],
+  correctIndexes,
   counts,
   disabled,
-  onSelect,
+  onToggle,
 }) {
+  const revealed = Array.isArray(correctIndexes)
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
       {options.map((opt, i) => {
-        const isCorrect = correctIndex !== null && correctIndex !== undefined && i === correctIndex
-        const isSelected = selectedIndex === i
-        const revealed = correctIndex !== null && correctIndex !== undefined
+        const isCorrect = revealed && correctIndexes.includes(i)
+        const isSelected = selectedIndexes.includes(i)
         const rawCount = counts?.find((c) => c.option_index === i)?.count
-        // Postgres bigint can come back as a string over the API; normalize it.
         const count = rawCount === undefined || rawCount === null ? null : Number(rawCount)
 
         let stateClasses = `${COLORS[i % COLORS.length]} text-white`
@@ -28,7 +33,7 @@ export default function OptionGrid({
             key={i}
             type="button"
             disabled={disabled}
-            onClick={() => onSelect?.(i)}
+            onClick={() => onToggle?.(i)}
             className={`text-left px-5 py-4 flex items-center gap-4 transition-colors ${stateClasses} ${
               disabled ? '' : 'cursor-pointer hover:brightness-110'
             } ${isSelected && !revealed ? 'ring-4 ring-ink/40' : ''}`}
@@ -37,9 +42,7 @@ export default function OptionGrid({
               {LETTERS[i]}
             </span>
             <span className="font-medium flex-1">{opt}</span>
-            {count !== null && (
-              <span className="font-mono text-sm tabular opacity-80">{count}</span>
-            )}
+            {count !== null && <span className="font-mono text-sm tabular opacity-80">{count}</span>}
             {isSelected && !revealed && <span className="text-xs font-mono">selected</span>}
           </button>
         )
