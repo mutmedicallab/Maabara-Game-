@@ -13,16 +13,18 @@ import {
   getScaleDistribution,
   getWordCloud,
   getOrderResults,
+  getAnswerProgress,
 } from '../lib/game'
 import { useGameState } from '../hooks/useGameState'
 import { useInterval } from '../hooks/useInterval'
+import { useQuestionIntro } from '../hooks/useQuestionIntro'
 import CodeDisplay from '../components/CodeDisplay.jsx'
 import Timer from '../components/Timer.jsx'
 import OptionGrid from '../components/OptionGrid.jsx'
 import Leaderboard from '../components/Leaderboard.jsx'
 import WordCloud from '../components/WordCloud.jsx'
-import { useQuestionIntro } from '../hooks/useQuestionIntro'
 import QuestionIntro from '../components/QuestionIntro.jsx'
+import Podium from '../components/Podium.jsx'
 
 const STORAGE_KEY = 'titer-up:host-session'
 const CHOICE_TYPES = ['multiple_choice', 'true_false', 'poll']
@@ -45,6 +47,7 @@ export default function Host() {
   const [scaleDist, setScaleDist] = useState([])
   const [words, setWords] = useState([])
   const [orderResults, setOrderResults] = useState([])
+  const [progress, setProgress] = useState(null)
 
   const endedRef = useRef(false)
 
@@ -67,8 +70,17 @@ export default function Host() {
 
   useInterval(refreshPlayers, session?.id ? 1500 : null)
 
+  const refreshProgress = useCallback(() => {
+    if (session?.id && state?.question_id && state?.status === 'question') {
+      getAnswerProgress(session.id, state.question_id).then(setProgress).catch(() => {})
+    }
+  }, [session?.id, state?.question_id, state?.status])
+
+  useInterval(refreshProgress, state?.status === 'question' ? 1200 : null)
+
   useEffect(() => {
     endedRef.current = false
+    setProgress(null)
   }, [state?.current_question_index])
 
   useEffect(() => {
@@ -190,34 +202,41 @@ export default function Host() {
         )}
 
         {session && state?.status === 'question' && showingIntro && (
-  <div className="flex flex-col gap-6">
-    <QuestionHeader state={state} />
-    <QuestionIntro
-      questionType={state.question_type}
-      pointsMultiplier={state.points_multiplier}
-      allowMultiple={state.allow_multiple}
-      questionNumber={state.current_question_index + 1}
-      totalQuestions={state.total_questions}
-    />
-  </div>
-)}
+          <div className="flex flex-col gap-6">
+            <QuestionHeader state={state} />
+            <QuestionIntro
+              questionType={state.question_type}
+              pointsMultiplier={state.points_multiplier}
+              allowMultiple={state.allow_multiple}
+              questionNumber={state.current_question_index + 1}
+              totalQuestions={state.total_questions}
+            />
+          </div>
+        )}
 
-{session && state?.status === 'question' && !showingIntro && (
-  <div className="flex flex-col gap-6">
-    <QuestionHeader state={state} />
-    <div className="lab-panel p-6">
-      <Timer startedAt={state.question_started_at} limitSeconds={state.time_limit} onExpire={handleTimerExpire} />
-      <p className="font-display font-semibold text-2xl mt-6 mb-5">{state.question_text}</p>
-      {renderLiveBody(state)}
-    </div>
-    <button
-      onClick={handleEndNow}
-      className="lab-panel px-6 py-3 font-mono text-sm uppercase tracking-wide hover:bg-ink hover:text-paper transition-colors"
-    >
-      End question now
-    </button>
-  </div>
-)}
+        {session && state?.status === 'question' && !showingIntro && (
+          <div className="flex flex-col gap-6">
+            <QuestionHeader state={state} />
+            <div className="lab-panel p-6">
+              <div className="flex items-center justify-between mb-2">
+                <Timer startedAt={state.question_started_at} limitSeconds={state.time_limit} onExpire={handleTimerExpire} />
+              </div>
+              {progress && (
+                <p className="font-mono text-xs text-ink/50 mb-4 text-right">
+                  {progress.answered_count} / {progress.total_players} answered
+                </p>
+              )}
+              <p className="font-display font-semibold text-2xl mb-5">{state.question_text}</p>
+              {renderLiveBody(state)}
+            </div>
+            <button
+              onClick={handleEndNow}
+              className="lab-panel px-6 py-3 font-mono text-sm uppercase tracking-wide hover:bg-ink hover:text-paper transition-colors"
+            >
+              End question now
+            </button>
+          </div>
+        )}
 
         {session && state?.status === 'question_end' && (
           <div className="flex flex-col gap-6">
@@ -323,6 +342,7 @@ export default function Host() {
               <p className="font-mono text-xs uppercase tracking-wide text-ink/50 mb-1">Final results</p>
               <h2 className="font-display font-bold text-3xl">{state.quiz_title}</h2>
             </div>
+            <Podium players={players} />
             <Leaderboard players={players} title="Final standings" />
             <button
               onClick={handleNewGame}

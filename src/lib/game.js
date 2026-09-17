@@ -79,3 +79,8 @@ export const getWordCloud = (gameId, questionId) =>
 
 export const getOrderResults = (gameId, questionId) =>
   call('get_order_results', { p_game_id: gameId, p_question_id: questionId })
+
+export const getAnswerProgress = async (gameId, questionId) => {
+  const rows = await call('get_answer_progress', { p_game_id: gameId, p_question_id: questionId })
+  return rows?.[0] ?? null
+}

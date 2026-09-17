@@ -3,14 +3,15 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { joinGame, submitAnswer, getPlayers } from '../lib/game'
 import { useGameState } from '../hooks/useGameState'
 import { useInterval } from '../hooks/useInterval'
+import { useQuestionIntro } from '../hooks/useQuestionIntro'
 import Timer from '../components/Timer.jsx'
 import OptionGrid from '../components/OptionGrid.jsx'
 import TextAnswerInput from '../components/TextAnswerInput.jsx'
 import ScalePicker from '../components/ScalePicker.jsx'
 import OrderPuzzle from '../components/OrderPuzzle.jsx'
 import Leaderboard from '../components/Leaderboard.jsx'
-import { useQuestionIntro } from '../hooks/useQuestionIntro'
 import QuestionIntro from '../components/QuestionIntro.jsx'
+import Podium from '../components/Podium.jsx'
 
 const STORAGE_KEY = 'titer-up:player-session'
 const CHOICE_TYPES = ['multiple_choice', 'true_false', 'poll']
@@ -93,20 +94,21 @@ export default function Join() {
             <p className="text-ink/60">Waiting for the host to start the quiz…</p>
           </div>
         )}
+
         {state?.status === 'question' && state.question_id && showingIntro && (
-  <QuestionIntro
-    questionType={state.question_type}
-    pointsMultiplier={state.points_multiplier}
-    allowMultiple={state.allow_multiple}
-    questionNumber={state.current_question_index + 1}
-    totalQuestions={state.total_questions}
-  />
-)}
+          <QuestionIntro
+            questionType={state.question_type}
+            pointsMultiplier={state.points_multiplier}
+            allowMultiple={state.allow_multiple}
+            questionNumber={state.current_question_index + 1}
+            totalQuestions={state.total_questions}
+          />
+        )}
 
         {state?.status === 'question' && !currentAnswer && state.question_id && !showingIntro && (
-  <div className="flex flex-col gap-6">
-    <Timer startedAt={state.question_started_at} limitSeconds={state.time_limit} />
-    <p className="font-display font-semibold text-xl">{state.question_text}</p>
+          <div className="flex flex-col gap-6">
+            <Timer startedAt={state.question_started_at} limitSeconds={state.time_limit} />
+            <p className="font-display font-semibold text-xl">{state.question_text}</p>
 
             {CHOICE_TYPES.includes(state.question_type) && !state.allow_multiple && (
               <OptionGrid options={state.options} onToggle={(i) => handleAnswer(state.question_id, { selectedIndexes: [i] })} />
@@ -148,7 +150,7 @@ export default function Join() {
           </div>
         )}
 
-        {state?.status === 'question' && currentAnswer && (
+        {state?.status === 'question' && currentAnswer && !showingIntro && (
           <div className="lab-panel p-8 text-center">
             <p className="font-display font-semibold text-xl mb-2">Answer locked in</p>
             <p className="text-ink/60">Waiting for the timer to run out…</p>
@@ -218,6 +220,7 @@ export default function Join() {
               <p className="font-mono text-xs uppercase tracking-wide text-ink/50 mb-1">Final results</p>
               <h2 className="font-display font-bold text-3xl">{state.quiz_title}</h2>
             </div>
+            <Podium players={players} highlightPlayerId={session.player_id} />
             <Leaderboard players={players} highlightPlayerId={session.player_id} title="Final standings" />
             <button
               onClick={handleLeave}
@@ -237,6 +240,7 @@ function ResultBanner({ answer, scoreless }) {
     return <div className="px-5 py-4 bg-ink/5 text-ink/60 text-center font-medium">No answer submitted in time</div>
   }
   const { result } = answer
+  const streak = result?.current_streak ?? 0
   if (scoreless) {
     return (
       <div className="px-5 py-4 bg-violet/10 border border-violet/30 text-violet text-center font-semibold">
@@ -248,6 +252,7 @@ function ResultBanner({ answer, scoreless }) {
     return (
       <div className="px-5 py-4 bg-culture/10 border border-culture/30 text-culture text-center font-semibold">
         Correct · +{result.points_awarded} points
+        {streak >= 2 && <span className="block text-sm mt-1 font-normal">🔥 {streak} in a row</span>}
       </div>
     )
   }
