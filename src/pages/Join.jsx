@@ -12,6 +12,9 @@ import OrderPuzzle from '../components/OrderPuzzle.jsx'
 import Leaderboard from '../components/Leaderboard.jsx'
 import QuestionIntro from '../components/QuestionIntro.jsx'
 import Podium from '../components/Podium.jsx'
+import RankGap from '../components/RankGap.jsx'
+import PageBackground from '../components/PageBackground.jsx'
+import { BACKGROUNDS } from '../lib/backgrounds'
 
 const STORAGE_KEY = 'titer-up:player-session'
 const CHOICE_TYPES = ['multiple_choice', 'true_false', 'poll']
@@ -76,7 +79,15 @@ export default function Join() {
   const currentAnswer = state?.question_id ? answered[state.question_id] : null
   const me = players.find((p) => p.id === session.player_id)
 
+  const bgKey =
+    state?.status === 'question' || state?.status === 'question_end'
+      ? 'question'
+      : state?.status === 'finished'
+        ? 'results'
+        : 'lobby'
+
   return (
+    <PageBackground image={BACKGROUNDS[bgKey]}>
     <div className="min-h-screen px-4 py-10">
       <div className="max-w-lg mx-auto">
         <header className="flex items-center justify-between mb-8">
@@ -211,6 +222,8 @@ export default function Join() {
             <p className="text-center font-mono text-sm text-ink/50">
               Score so far: <span className="text-ink tabular">{me?.score ?? 0}</span>
             </p>
+            <RankGap players={players} playerId={session.player_id} />
+            <Leaderboard players={players} highlightPlayerId={session.player_id} title="Standings" />
           </div>
         )}
 
@@ -232,6 +245,7 @@ export default function Join() {
         )}
       </div>
     </div>
+    </PageBackground>
   )
 }
 
@@ -291,6 +305,7 @@ function JoinForm({ defaultCode, onJoined }) {
   }
 
   return (
+    <PageBackground image={BACKGROUNDS.join}>
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <Link to="/" className="font-display font-bold text-2xl block text-center mb-8">
@@ -333,6 +348,7 @@ function JoinForm({ defaultCode, onJoined }) {
         </form>
       </div>
     </div>
+    </PageBackground>
   )
 }
 

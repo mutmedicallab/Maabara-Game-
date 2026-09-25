@@ -1,8 +1,13 @@
 import { Link } from 'react-router-dom'
 import DuelingMascots from '../components/DuelingMascots.jsx'
+import PageBackground from '../components/PageBackground.jsx'
+import FloatingMascots from '../components/FloatingMascots.jsx'
+import { BACKGROUNDS } from '../lib/backgrounds'
 
 export default function Home() {
   return (
+    <PageBackground image={BACKGROUNDS.home}>
+    <FloatingMascots />
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12 gap-10">
       <DuelingMascots />
 
@@ -54,5 +59,6 @@ export default function Home() {
         </p>
       </div>
     </div>
+    </PageBackground>
   )
 }

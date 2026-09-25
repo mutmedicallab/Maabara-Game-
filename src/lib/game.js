@@ -10,13 +10,21 @@ async function call(fn, args = {}) {
 
 export const listQuizzes = () => call('list_quizzes')
 
-export const createGame = async (quizId) => {
-  const rows = await call('create_game', { p_quiz_id: quizId })
+export const createGame = async (quizId, scoringMode = 'speed', teamMode = false) => {
+  const rows = await call('create_game', {
+    p_quiz_id: quizId,
+    p_scoring_mode: scoringMode,
+    p_team_mode: teamMode,
+  })
   return rows?.[0] ?? null
 }
 
-export const joinGame = async (code, nickname) => {
-  const rows = await call('join_game', { p_code: code.trim().toUpperCase(), p_nickname: nickname.trim() })
+export const joinGame = async (code, nickname, teamName) => {
+  const rows = await call('join_game', {
+    p_code: code.trim().toUpperCase(),
+    p_nickname: nickname.trim(),
+    p_team_name: teamName?.trim() || null,
+  })
   return rows?.[0] ?? null
 }
 
@@ -26,6 +34,8 @@ export const getGameState = async (code) => {
 }
 
 export const getPlayers = (gameId) => call('get_players', { p_game_id: gameId })
+
+export const getTeamLeaderboard = (gameId) => call('get_team_leaderboard', { p_game_id: gameId })
 
 export const startGame = (gameId, hostToken) =>
   call('start_game', { p_game_id: gameId, p_host_token: hostToken })

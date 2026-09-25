@@ -7,6 +7,7 @@ import {
   endQuestion,
   nextQuestion,
   getPlayers,
+  getTeamLeaderboard,
   getAnswerCounts,
   getOpenEndedAnswers,
   getScaleStats,
@@ -22,9 +23,12 @@ import CodeDisplay from '../components/CodeDisplay.jsx'
 import Timer from '../components/Timer.jsx'
 import OptionGrid from '../components/OptionGrid.jsx'
 import Leaderboard from '../components/Leaderboard.jsx'
+import TeamLeaderboard from '../components/TeamLeaderboard.jsx'
 import WordCloud from '../components/WordCloud.jsx'
 import QuestionIntro from '../components/QuestionIntro.jsx'
 import Podium from '../components/Podium.jsx'
+import PageBackground from '../components/PageBackground.jsx'
+import { BACKGROUNDS } from '../lib/backgrounds'
 
 const STORAGE_KEY = 'titer-up:host-session'
 const CHOICE_TYPES = ['multiple_choice', 'true_false', 'poll']
@@ -40,6 +44,7 @@ export default function Host() {
   const [creating, setCreating] = useState(false)
   const [actionError, setActionError] = useState(null)
   const [players, setPlayers] = useState([])
+  const [teamBoard, setTeamBoard] = useState([])
 
   const [mcCounts, setMcCounts] = useState([])
   const [openAnswers, setOpenAnswers] = useState([])
@@ -61,7 +66,10 @@ export default function Host() {
   }, [session])
 
   const refreshPlayers = useCallback(() => {
-    if (session?.id) getPlayers(session.id).then(setPlayers).catch(() => {})
+    if (session?.id) {
+      getPlayers(session.id).then(setPlayers).catch(() => {})
+      getTeamLeaderboard(session.id).then(setTeamBoard).catch(() => {})
+    }
   }, [session?.id])
 
   useEffect(() => {
@@ -99,11 +107,11 @@ export default function Host() {
     }
   }, [state?.status, state?.question_id, state?.question_type, session?.id])
 
-  async function handleCreateGame(quizId) {
+  async function handleCreateGame(quizId, scoringMode, teamMode) {
     setCreating(true)
     setActionError(null)
     try {
-      const game = await createGame(quizId)
+      const game = await createGame(quizId, scoringMode, teamMode)
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify(game))
       setSession(game)
     } catch (e) {
@@ -159,6 +167,7 @@ export default function Host() {
     sessionStorage.removeItem(STORAGE_KEY)
     setSession(null)
     setPlayers([])
+    setTeamBoard([])
     setMcCounts([])
     setOpenAnswers([])
     setScaleStats(null)
@@ -167,7 +176,16 @@ export default function Host() {
     setOrderResults([])
   }
 
+  const bgKey = !session
+    ? 'home'
+    : state?.status === 'question' || state?.status === 'question_end'
+      ? 'question'
+      : state?.status === 'finished'
+        ? 'results'
+        : 'lobby'
+
   return (
+    <PageBackground image={BACKGROUNDS[bgKey]}>
     <div className="min-h-screen px-4 py-10">
       <div className="max-w-3xl mx-auto">
         <header className="flex items-center justify-between mb-8">
@@ -189,6 +207,7 @@ export default function Host() {
 
         {session && state?.status === 'lobby' && (
           <div className="flex flex-col gap-6">
+            <ModeBadges state={state} />
             <CodeDisplay code={session.code} />
             <Leaderboard players={players} title="Players in the room" />
             <button
@@ -326,7 +345,11 @@ export default function Host() {
                 </div>
               )}
             </div>
-            <Leaderboard players={players} title="Standings" />
+            {state.team_mode ? (
+              <TeamLeaderboard teams={teamBoard} title="Team standings" />
+            ) : (
+              <Leaderboard players={players} title="Standings" />
+            )}
             <button
               onClick={handleNext}
               className="bg-violet text-white font-display font-semibold text-lg px-6 py-4 hover:bg-violet-dim transition-colors"
@@ -343,7 +366,11 @@ export default function Host() {
               <h2 className="font-display font-bold text-3xl">{state.quiz_title}</h2>
             </div>
             <Podium players={players} />
-            <Leaderboard players={players} title="Final standings" />
+            {state.team_mode ? (
+              <TeamLeaderboard teams={teamBoard} title="Final team standings" />
+            ) : (
+              <Leaderboard players={players} title="Final standings" />
+            )}
             <button
               onClick={handleNewGame}
               className="lab-panel px-6 py-4 font-display font-semibold hover:bg-ink hover:text-paper transition-colors"
@@ -353,6 +380,25 @@ export default function Host() {
           </div>
         )}
       </div>
+    </div>
+    </PageBackground>
+  )
+}
+
+function ModeBadges({ state }) {
+  if (state.scoring_mode !== 'accuracy' && !state.team_mode) return null
+  return (
+    <div className="flex gap-2 justify-center flex-wrap">
+      {state.scoring_mode === 'accuracy' && (
+        <span className="font-mono text-xs uppercase tracking-wide bg-culture/10 text-culture px-3 py-1">
+          Accuracy Mode
+        </span>
+      )}
+      {state.team_mode && (
+        <span className="font-mono text-xs uppercase tracking-wide bg-violet/10 text-violet px-3 py-1">
+          Team Mode
+        </span>
+      )}
     </div>
   )
 }
@@ -386,10 +432,45 @@ function QuestionHeader({ state }) {
 }
 
 function QuizPicker({ quizzes, error, creating, onPick }) {
+  const [scoringMode, setScoringMode] = useState('speed')
+  const [teamMode, setTeamMode] = useState(false)
+
   return (
     <div>
       <h1 className="font-display font-semibold text-2xl mb-1">Pick a deck</h1>
       <p className="text-ink/60 mb-6">You'll get a room code on the next screen.</p>
+
+      <div className="lab-panel p-5 mb-6 flex flex-col gap-4">
+        <div>
+          <p className="font-mono text-xs uppercase tracking-wide text-ink/50 mb-2">Scoring</p>
+          <div className="flex border border-ink/20 w-fit">
+            <button
+              type="button"
+              onClick={() => setScoringMode('speed')}
+              className={`px-4 py-2 text-sm font-medium ${scoringMode === 'speed' ? 'bg-violet text-white' : 'hover:bg-ink/5'}`}
+            >
+              Speed
+            </button>
+            <button
+              type="button"
+              onClick={() => setScoringMode('accuracy')}
+              className={`px-4 py-2 text-sm font-medium ${scoringMode === 'accuracy' ? 'bg-violet text-white' : 'hover:bg-ink/5'}`}
+            >
+              Accuracy
+            </button>
+          </div>
+          <p className="text-xs text-ink/40 mt-1">
+            {scoringMode === 'speed'
+              ? 'Faster correct answers earn more points.'
+              : 'Every correct answer earns the same points, regardless of timing.'}
+          </p>
+        </div>
+
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={teamMode} onChange={(e) => setTeamMode(e.target.checked)} />
+          Team mode — players join under a team name and compete as groups
+        </label>
+      </div>
 
       {error && (
         <p className="text-safranin text-sm mb-4">
@@ -402,7 +483,7 @@ function QuizPicker({ quizzes, error, creating, onPick }) {
           <button
             key={q.id}
             disabled={creating}
-            onClick={() => onPick(q.id)}
+            onClick={() => onPick(q.id, scoringMode, teamMode)}
             className="lab-panel px-5 py-4 flex items-center justify-between text-left hover:bg-violet hover:text-white hover:border-violet transition-colors disabled:opacity-50"
           >
             <span className="font-display font-medium">{q.title}</span>
