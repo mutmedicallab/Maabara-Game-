@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { joinGame, submitAnswer, getPlayers } from '../lib/game'
+import { joinGame, submitAnswer, getPlayers, getTeamLeaderboard } from '../lib/game'
 import { useGameState } from '../hooks/useGameState'
 import { useInterval } from '../hooks/useInterval'
 import { useQuestionIntro } from '../hooks/useQuestionIntro'
@@ -10,6 +10,7 @@ import TextAnswerInput from '../components/TextAnswerInput.jsx'
 import ScalePicker from '../components/ScalePicker.jsx'
 import OrderPuzzle from '../components/OrderPuzzle.jsx'
 import Leaderboard from '../components/Leaderboard.jsx'
+import TeamLeaderboard from '../components/TeamLeaderboard.jsx'
 import QuestionIntro from '../components/QuestionIntro.jsx'
 import Podium from '../components/Podium.jsx'
 import RankGap from '../components/RankGap.jsx'
@@ -27,6 +28,7 @@ export default function Join() {
     return raw ? JSON.parse(raw) : null
   })
   const [players, setPlayers] = useState([])
+  const [teamBoard, setTeamBoard] = useState([])
   const [answered, setAnswered] = useState({})
   const [pending, setPending] = useState([])
   const answeringRef = useRef(false)
@@ -39,7 +41,10 @@ export default function Join() {
   }, [state?.question_id])
 
   const refreshPlayers = useCallback(() => {
-    if (session?.game_id) getPlayers(session.game_id).then(setPlayers).catch(() => {})
+    if (session?.game_id) {
+      getPlayers(session.game_id).then(setPlayers).catch(() => {})
+      getTeamLeaderboard(session.game_id).then(setTeamBoard).catch(() => {})
+    }
   }, [session?.game_id])
 
   useEffect(() => {
@@ -94,7 +99,10 @@ export default function Join() {
           <Link to="/" className="font-display font-bold text-2xl">
             Titer<span className="text-violet"> Up</span>
           </Link>
-          <span className="font-mono text-xs text-ink/50">{session.nickname}</span>
+          <span className="font-mono text-xs text-ink/50 text-right">
+            {session.nickname}
+            {session.teamName && <span className="block text-ink/40">{session.teamName}</span>}
+          </span>
         </header>
 
         {!state && <p className="text-ink/50 text-sm">Connecting…</p>}
@@ -222,8 +230,15 @@ export default function Join() {
             <p className="text-center font-mono text-sm text-ink/50">
               Score so far: <span className="text-ink tabular">{me?.score ?? 0}</span>
             </p>
-            <RankGap players={players} playerId={session.player_id} />
-            <Leaderboard players={players} highlightPlayerId={session.player_id} title="Standings" />
+
+            {state.team_mode ? (
+              <TeamLeaderboard teams={teamBoard} highlightTeamName={session.teamName} title="Team standings" />
+            ) : (
+              <>
+                <RankGap players={players} playerId={session.player_id} />
+                <Leaderboard players={players} highlightPlayerId={session.player_id} title="Standings" />
+              </>
+            )}
           </div>
         )}
 
@@ -234,7 +249,11 @@ export default function Join() {
               <h2 className="font-display font-bold text-3xl">{state.quiz_title}</h2>
             </div>
             <Podium players={players} highlightPlayerId={session.player_id} />
-            <Leaderboard players={players} highlightPlayerId={session.player_id} title="Final standings" />
+            {state.team_mode ? (
+              <TeamLeaderboard teams={teamBoard} highlightTeamName={session.teamName} title="Final team standings" />
+            ) : (
+              <Leaderboard players={players} highlightPlayerId={session.player_id} title="Final standings" />
+            )}
             <button
               onClick={handleLeave}
               className="lab-panel px-6 py-4 font-display font-semibold hover:bg-ink hover:text-paper transition-colors"
@@ -280,6 +299,7 @@ function ResultBanner({ answer, scoreless }) {
 function JoinForm({ defaultCode, onJoined }) {
   const [code, setCode] = useState(defaultCode)
   const [nickname, setNickname] = useState('')
+  const [teamName, setTeamName] = useState('')
   const [error, setError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -288,12 +308,13 @@ function JoinForm({ defaultCode, onJoined }) {
     setError(null)
     setSubmitting(true)
     try {
-      const result = await joinGame(code, nickname)
+      const result = await joinGame(code, nickname, teamName)
       const session = {
         player_id: result.player_id,
         game_id: result.game_id,
         code: code.trim().toUpperCase(),
         nickname: nickname.trim(),
+        teamName: teamName.trim() || null,
       }
       sessionStorage.setItem('titer-up:player-session', JSON.stringify(session))
       onJoined(session)
@@ -335,6 +356,18 @@ function JoinForm({ defaultCode, onJoined }) {
               className="w-full px-4 py-3 border border-ink/20 focus:border-violet focus:outline-none"
             />
           </div>
+          <div>
+            <label className="font-mono text-xs uppercase tracking-wide text-ink/50 block mb-1">
+              Team name (only if the host turned on team mode)
+            </label>
+            <input
+              value={teamName}
+              onChange={(e) => setTeamName(e.target.value)}
+              maxLength={24}
+              placeholder="e.g. Gram Positives"
+              className="w-full px-4 py-3 border border-ink/20 focus:border-violet focus:outline-none"
+            />
+          </div>
 
           {error && <p className="text-safranin text-sm">{error}</p>}
 
@@ -356,5 +389,6 @@ function friendlyError(message) {
   if (message?.includes('GAME_NOT_FOUND')) return "That code doesn't match a game right now."
   if (message?.includes('GAME_ALREADY_STARTED')) return 'That game has already started.'
   if (message?.includes('NICKNAME_TAKEN')) return 'Someone already used that nickname — try another.'
+  if (message?.includes('TEAM_NAME_REQUIRED')) return 'This is a team game — enter a team name to join.'
   return message || 'Could not join the game.'
 }
