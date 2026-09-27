@@ -19,7 +19,7 @@ import ReactionBar from '../components/ReactionBar.jsx'
 import SceneArt from '../components/SceneArt.jsx'
 import { ILLUSTRATIONS, PAGE_GRADIENTS } from '../lib/illustrations'
 
-const STORAGE_KEY = 'titer-up:player-session'
+const STORAGE_KEY = 'synapse:player-session'
 const CHOICE_TYPES = ['multiple_choice', 'true_false', 'poll']
 const UNGRADED_TYPES = ['scale', 'poll', 'word_cloud']
 
@@ -328,7 +328,7 @@ function JoinForm({ defaultCode, onJoined }) {
         nickname: nickname.trim(),
         teamName: teamName.trim() || null,
       }
-      sessionStorage.setItem('titer-up:player-session', JSON.stringify(session))
+      sessionStorage.setItem('synapse:player-session', JSON.stringify(session))
       onJoined(session)
     } catch (e2) {
       setError(friendlyError(e2.message))
@@ -342,7 +342,7 @@ function JoinForm({ defaultCode, onJoined }) {
       <SceneArt items={ILLUSTRATIONS.join} />
       <div className="w-full max-w-sm relative z-10">
         <Link to="/" className="font-display font-bold text-2xl block text-center mb-8">
-          Titer<span className="text-violet"> Up</span>
+          Syn<span className="text-violet">apse</span>
         </Link>
 
         <form onSubmit={handleSubmit} className="lab-panel p-6 flex flex-col gap-4">

@@ -1,4 +1,4 @@
-# Titer Up
+# Synapse
 
 A live, Kahoot-style quiz for the lab. One host screen, one join code, everyone
 answers from their own phone. Built with React + Vite + Tailwind CSS v4 and a

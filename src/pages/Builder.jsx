@@ -8,7 +8,7 @@ import {
   deleteQuiz,
 } from '../lib/builder'
 
-const PASSCODE_KEY = 'titer-up:builder-passcode'
+const PASSCODE_KEY = 'synapse:builder-passcode'
 
 const TYPE_LABELS = {
   multiple_choice: 'Multiple choice',
@@ -324,7 +324,7 @@ export default function Builder() {
       <div className="max-w-2xl mx-auto">
         <header className="flex items-center justify-between mb-8">
           <Link to="/" className="font-display font-bold text-2xl">
-            Titer<span className="text-violet"> Up</span>
+            Syn<span className="text-violet">apse</span>
           </Link>
           <span className="font-mono text-xs uppercase tracking-wide text-ink/50">Quiz builder</span>
         </header>

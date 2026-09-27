@@ -13,7 +13,7 @@ export default function Home() {
             Ready?
           </p>
           <h1 className="font-display font-bold text-5xl tracking-tight text-white">
-            <span className="text-amber"> Synapse</span>
+            Syn<span className="text-amber">apse</span>
           </h1>
           <p className="text-white/60 mt-3">
             First to the well wins. One code, everyone's phone, all the bragging rights.

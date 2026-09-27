@@ -33,7 +33,7 @@ import LiveReactions from '../components/LiveReactions.jsx'
 import SceneArt from '../components/SceneArt.jsx'
 import { ILLUSTRATIONS, PAGE_GRADIENTS } from '../lib/illustrations'
 
-const STORAGE_KEY = 'titer-up:host-session'
+const STORAGE_KEY = 'synapse:host-session'
 const CHOICE_TYPES = ['multiple_choice', 'true_false', 'poll']
 
 export default function Host() {
@@ -221,7 +221,7 @@ export default function Host() {
       <div className="max-w-3xl mx-auto relative z-10">
         <header className="flex items-center justify-between mb-8">
           <Link to="/" className="font-display font-bold text-2xl">
-            Titer<span className="text-violet"> Up</span>
+            Syn<span className="text-violet">apse</span>
           </Link>
           <span className="font-mono text-xs uppercase tracking-wide text-white/70">Host console</span>
         </header>
