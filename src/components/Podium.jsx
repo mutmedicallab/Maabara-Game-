@@ -1,6 +1,6 @@
 const PLACE_STYLE = [
   { order: 'order-2', height: 'h-40', color: 'bg-amber', label: '1st' },
-  { order: 'order-1', height: 'h-28', color: 'bg-ink/30', label: '2nd' },
+  { order: 'order-1', height: 'h-28', color: 'bg-white/30', label: '2nd' },
   { order: 'order-3', height: 'h-20', color: 'bg-safranin', label: '3rd' },
 ]
 
@@ -14,10 +14,14 @@ export default function Podium({ players, highlightPlayerId }) {
         const style = PLACE_STYLE[i]
         return (
           <div key={p.id} className={`flex flex-col items-center gap-2 flex-1 max-w-[140px] ${style.order}`}>
-            <p className={`font-display font-semibold text-center truncate w-full ${p.id === highlightPlayerId ? 'text-violet' : 'text-ink'}`}>
+            <p
+              className={`font-display text-center truncate w-full ${
+                p.id === highlightPlayerId ? 'text-white font-extrabold' : 'text-white/85 font-semibold'
+              }`}
+            >
               {p.nickname}
             </p>
-            <p className="font-mono text-xs tabular text-ink/50">{p.score} pts</p>
+            <p className="font-mono text-xs tabular text-white/70">{p.score} pts</p>
             <div className={`w-full ${style.height} ${style.color} flex items-start justify-center pt-2`}>
               <span className="font-display font-bold text-white text-lg">{style.label}</span>
             </div>
