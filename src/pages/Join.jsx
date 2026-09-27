@@ -17,7 +17,7 @@ import Podium from '../components/Podium.jsx'
 import RankGap from '../components/RankGap.jsx'
 import ReactionBar from '../components/ReactionBar.jsx'
 import SceneArt from '../components/SceneArt.jsx'
-import { ILLUSTRATIONS } from '../lib/illustrations'
+import { ILLUSTRATIONS, PAGE_GRADIENTS } from '../lib/illustrations'
 
 const STORAGE_KEY = 'titer-up:player-session'
 const CHOICE_TYPES = ['multiple_choice', 'true_false', 'poll']
