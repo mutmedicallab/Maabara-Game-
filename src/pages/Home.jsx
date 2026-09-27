@@ -10,10 +10,10 @@ export default function Home() {
       <div className="w-full max-w-md relative z-10">
         <div className="mb-10 text-center">
           <p className="font-mono text-xs uppercase tracking-wide text-white/50 mb-2">
-            club quiz night
+            Ready?
           </p>
           <h1 className="font-display font-bold text-5xl tracking-tight text-white">
-            Titer<span className="text-amber"> Up</span>
+            <span className="text-amber"> Synapse</span>
           </h1>
           <p className="text-white/60 mt-3">
             First to the well wins. One code, everyone's phone, all the bragging rights.

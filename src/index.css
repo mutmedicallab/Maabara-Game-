@@ -8,13 +8,12 @@
   --color-ink: #15201c;
   --color-paper: #eef1ea;
   --color-paper-dim: #e2e6da;
-  --color-violet: #5b3a8e;
-  --color-violet-dim: #47306e;
-  --color-safranin: #c8553d;
-  --color-culture: #3f7d58;
-  --color-amber: #d99a3d;
+  --color-violet: #7c3aed;
+  --color-violet-dim: #5b21b6;
+  --color-safranin: #e4572e;
+  --color-culture: #22c55e;
+  --color-amber: #f5a623;
 }
-
 html {
   color-scheme: light;
 }
@@ -25,10 +24,10 @@ body {
   font-family: var(--font-sans);
 }
 
-/* subtle fixed grain/texture so flat panels don't look like default SaaS cards */
 .lab-panel {
   background-color: white;
   border: 1px solid rgba(21, 32, 28, 0.14);
+  color: var(--color-ink);
 }
 
 .lab-rule {

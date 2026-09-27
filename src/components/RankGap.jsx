@@ -8,11 +8,11 @@ export default function RankGap({ players, playerId }) {
   if (rank === 0) {
     const second = sorted[1]
     if (!second) {
-      return <p className="text-center font-mono text-sm text-culture">You're in the lead!</p>
+      return <p className="text-center font-mono text-sm text-white font-semibold">You're in the lead!</p>
     }
     const lead = me.score - second.score
     return (
-      <p className="text-center font-mono text-sm text-culture">
+      <p className="text-center font-mono text-sm text-white font-semibold">
         {lead === 0 ? `Tied for the lead with ${second.nickname}` : `In the lead · ${lead} pts clear of ${second.nickname}`}
       </p>
     )
@@ -22,7 +22,7 @@ export default function RankGap({ players, playerId }) {
   const gap = ahead.score - me.score
 
   return (
-    <p className="text-center font-mono text-sm text-ink/60">
+    <p className="text-center font-mono text-sm text-white/80">
       {gap === 0 ? `Tied with ${ahead.nickname} for #${rank}` : `#${rank + 1} · ${gap} pts behind ${ahead.nickname}`}
     </p>
   )

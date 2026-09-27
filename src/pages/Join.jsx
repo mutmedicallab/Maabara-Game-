@@ -97,17 +97,17 @@ export default function Join() {
         ? 'results'
         : 'lobby'
 
-   return (
-    <div className="min-h-screen bg-paper relative overflow-hidden px-4 py-10">
+     return (
+    <div className={`min-h-screen relative overflow-hidden px-4 py-10 ${PAGE_GRADIENTS[bgKey] || 'bg-paper'}`}>
       <SceneArt items={ILLUSTRATIONS[bgKey] || []} />
       <div className="max-w-lg mx-auto relative z-10">
         <header className="flex items-center justify-between mb-8">
           <Link to="/" className="font-display font-bold text-2xl">
             Titer<span className="text-violet"> Up</span>
           </Link>
-          <span className="font-mono text-xs text-ink/50 text-right">
+                    <span className="font-mono text-xs text-white/70 text-right">
             {session.nickname}
-            {session.teamName && <span className="block text-ink/40">{session.teamName}</span>}
+            {session.teamName && <span className="block text-white/50">{session.teamName}</span>}
           </span>
         </header>
 
@@ -236,9 +236,9 @@ export default function Join() {
               </div>
             )}
 
-            <ResultBanner answer={currentAnswer} scoreless={UNGRADED_TYPES.includes(state.question_type)} />
-            <p className="text-center font-mono text-sm text-ink/50">
-              Score so far: <span className="text-ink tabular">{me?.score ?? 0}</span>
+                        <ResultBanner answer={currentAnswer} scoreless={UNGRADED_TYPES.includes(state.question_type)} />
+            <p className="text-center font-mono text-sm text-white/80">
+              Score so far: <span className="text-white font-semibold tabular">{me?.score ?? 0}</span>
             </p>
 
             <ReactionBar onSend={handleReact} />
@@ -256,9 +256,9 @@ export default function Join() {
 
         {state?.status === 'finished' && (
           <div className="flex flex-col gap-6">
-            <div className="text-center py-4">
-              <p className="font-mono text-xs uppercase tracking-wide text-ink/50 mb-1">Final results</p>
-              <h2 className="font-display font-bold text-3xl">{state.quiz_title}</h2>
+                        <div className="text-center py-4">
+              <p className="font-mono text-xs uppercase tracking-wide text-white/70 mb-1">Final results</p>
+              <h2 className="font-display font-bold text-3xl text-white">{state.quiz_title}</h2>
             </div>
             <Podium players={players} highlightPlayerId={session.player_id} />
             <ReactionBar onSend={handleReact} />
@@ -337,8 +337,8 @@ function JoinForm({ defaultCode, onJoined }) {
     }
   }
 
-    return (
-    <div className="min-h-screen bg-paper relative overflow-hidden flex items-center justify-center px-4">
+      return (
+    <div className={`min-h-screen relative overflow-hidden flex items-center justify-center px-4 ${PAGE_GRADIENTS.join}`}>
       <SceneArt items={ILLUSTRATIONS.join} />
       <div className="w-full max-w-sm relative z-10">
         <Link to="/" className="font-display font-bold text-2xl block text-center mb-8">

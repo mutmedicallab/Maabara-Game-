@@ -1,6 +1,13 @@
-// One place to control which illustrations show on which screen, and where.
-// className controls both position and size -- not limited to corners,
-// put these anywhere (top/bottom/left/right/center, any width).
+// Bold color-block backgrounds per screen, Kahoot-style -- the page canvas
+// itself carries saturated color instead of a neutral background; white
+// lab-panel cards sit on top and stay readable regardless.
+export const PAGE_GRADIENTS = {
+  lobby: 'bg-gradient-to-br from-violet to-violet-dim',
+  question: 'bg-gradient-to-br from-violet to-safranin',
+  results: 'bg-gradient-to-br from-culture to-amber',
+  join: 'bg-gradient-to-br from-amber to-safranin',
+}
+
 export const ILLUSTRATIONS = {
   home: [
     { src: '/images/rocket-boy-8.png', className: 'absolute -top-10 -right-14 w-48 sm:w-72 md:w-96' },

@@ -31,7 +31,7 @@ import Countdown321 from '../components/Countdown321.jsx'
 import Podium from '../components/Podium.jsx'
 import LiveReactions from '../components/LiveReactions.jsx'
 import SceneArt from '../components/SceneArt.jsx'
-import { ILLUSTRATIONS } from '../lib/illustrations'
+import { ILLUSTRATIONS, PAGE_GRADIENTS } from '../lib/illustrations'
 
 const STORAGE_KEY = 'titer-up:host-session'
 const CHOICE_TYPES = ['multiple_choice', 'true_false', 'poll']
@@ -214,8 +214,8 @@ export default function Host() {
         ? 'results'
         : 'lobby'
 
-  return (
-    <div className="min-h-screen bg-paper relative overflow-hidden px-4 py-10">
+    return (
+    <div className={`min-h-screen relative overflow-hidden px-4 py-10 ${bgKey ? PAGE_GRADIENTS[bgKey] || 'bg-paper' : 'bg-ink'}`}>
       <SceneArt items={ILLUSTRATIONS[bgKey] || []} />
       <LiveReactions reactions={reactions} />
       <div className="max-w-3xl mx-auto relative z-10">
@@ -223,7 +223,7 @@ export default function Host() {
           <Link to="/" className="font-display font-bold text-2xl">
             Titer<span className="text-violet"> Up</span>
           </Link>
-          <span className="font-mono text-xs uppercase tracking-wide text-ink/50">Host console</span>
+          <span className="font-mono text-xs uppercase tracking-wide text-white/70">Host console</span>
         </header>
 
         {actionError && (
@@ -399,9 +399,9 @@ export default function Host() {
 
         {session && state?.status === 'finished' && (
           <div className="flex flex-col gap-6">
-            <div className="text-center py-4">
-              <p className="font-mono text-xs uppercase tracking-wide text-ink/50 mb-1">Final results</p>
-              <h2 className="font-display font-bold text-3xl">{state.quiz_title}</h2>
+                        <div className="text-center py-4">
+              <p className="font-mono text-xs uppercase tracking-wide text-white/70 mb-1">Final results</p>
+              <h2 className="font-display font-bold text-3xl text-white">{state.quiz_title}</h2>
             </div>
             <Podium players={players} />
             {state.team_mode ? (
@@ -426,13 +426,13 @@ function ModeBadges({ state }) {
   if (state.scoring_mode !== 'accuracy' && !state.team_mode) return null
   return (
     <div className="flex gap-2 justify-center flex-wrap">
-      {state.scoring_mode === 'accuracy' && (
-        <span className="font-mono text-xs uppercase tracking-wide bg-culture/10 text-culture px-3 py-1">
+            {state.scoring_mode === 'accuracy' && (
+        <span className="font-mono text-xs uppercase tracking-wide bg-white/15 text-white border border-white/30 px-3 py-1">
           Accuracy Mode
         </span>
       )}
       {state.team_mode && (
-        <span className="font-mono text-xs uppercase tracking-wide bg-violet/10 text-violet px-3 py-1">
+        <span className="font-mono text-xs uppercase tracking-wide bg-white/15 text-white border border-white/30 px-3 py-1">
           Team Mode
         </span>
       )}
@@ -460,8 +460,8 @@ function renderLiveBody(state) {
 function QuestionHeader({ state }) {
   return (
     <div className="flex items-baseline justify-between">
-      <p className="font-mono text-xs uppercase tracking-wide text-ink/50">{state.quiz_title}</p>
-      <p className="font-mono text-xs tabular text-ink/50">
+      <p className="font-mono text-xs uppercase tracking-wide text-white/70">{state.quiz_title}</p>
+      <p className="font-mono text-xs tabular text-white/70">
         Question {state.current_question_index + 1} / {state.total_questions}
       </p>
     </div>
@@ -475,7 +475,7 @@ function QuizPicker({ quizzes, error, creating, onPick }) {
   return (
     <div>
       <h1 className="font-display font-semibold text-2xl mb-1">Pick a deck</h1>
-      <p className="text-ink/60 mb-6">You'll get a room code on the next screen.</p>
+            <p className="text-white/60 mb-6">You'll get a room code on the next screen.</p>
 
       <div className="lab-panel p-5 mb-6 flex flex-col gap-4">
         <div>
@@ -527,7 +527,7 @@ function QuizPicker({ quizzes, error, creating, onPick }) {
             <span className="font-mono text-xs tabular opacity-70">{q.question_count} Q</span>
           </button>
         ))}
-        {quizzes.length === 0 && !error && <p className="text-ink/50 text-sm">Loading decks…</p>}
+          {quizzes.length === 0 && !error && <p className="text-white/50 text-sm">Loading decks…</p>}
       </div>
     </div>
   )
