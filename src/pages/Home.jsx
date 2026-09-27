@@ -1,25 +1,21 @@
 import { Link } from 'react-router-dom'
-import DuelingMascots from '../components/DuelingMascots.jsx'
-import PageBackground from '../components/PageBackground.jsx'
-import FloatingMascots from '../components/FloatingMascots.jsx'
-import { BACKGROUNDS } from '../lib/backgrounds'
+import SceneArt from '../components/SceneArt.jsx'
+import { ILLUSTRATIONS } from '../lib/illustrations'
 
 export default function Home() {
   return (
-    <PageBackground image={BACKGROUNDS.home}>
-    <FloatingMascots />
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12 gap-10">
-      <DuelingMascots />
+    <div className="min-h-screen bg-ink relative overflow-hidden flex flex-col items-center justify-center px-4 py-12 gap-10">
+      <SceneArt items={ILLUSTRATIONS.home} />
 
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md relative z-10">
         <div className="mb-10 text-center">
-          <p className="font-mono text-xs uppercase tracking-wide text-ink/50 mb-2">
+          <p className="font-mono text-xs uppercase tracking-wide text-white/50 mb-2">
             club quiz night
           </p>
-          <h1 className="font-display font-bold text-5xl tracking-tight text-ink">
-            Titer<span className="text-violet"> Up</span>
+          <h1 className="font-display font-bold text-5xl tracking-tight text-white">
+            Titer<span className="text-amber"> Up</span>
           </h1>
-          <p className="text-ink/60 mt-3">
+          <p className="text-white/60 mt-3">
             First to the well wins. One code, everyone's phone, all the bragging rights.
           </p>
         </div>
@@ -53,12 +49,11 @@ export default function Home() {
         </div>
 
         <p className="text-center mt-8">
-          <Link to="/build" className="font-mono text-xs uppercase tracking-wide text-ink/40 hover:text-ink/70">
+          <Link to="/build" className="font-mono text-xs uppercase tracking-wide text-white/40 hover:text-white/70">
             Manage quizzes
           </Link>
         </p>
       </div>
     </div>
-    </PageBackground>
   )
 }

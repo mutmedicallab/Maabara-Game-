@@ -15,10 +15,11 @@ import {
   getWordCloud,
   getOrderResults,
   getAnswerProgress,
+  getRecentReactions,
 } from '../lib/game'
 import { useGameState } from '../hooks/useGameState'
 import { useInterval } from '../hooks/useInterval'
-import { useQuestionIntro } from '../hooks/useQuestionIntro'
+import { useQuestionPhases } from '../hooks/useQuestionPhases'
 import CodeDisplay from '../components/CodeDisplay.jsx'
 import Timer from '../components/Timer.jsx'
 import OptionGrid from '../components/OptionGrid.jsx'
@@ -26,9 +27,11 @@ import Leaderboard from '../components/Leaderboard.jsx'
 import TeamLeaderboard from '../components/TeamLeaderboard.jsx'
 import WordCloud from '../components/WordCloud.jsx'
 import QuestionIntro from '../components/QuestionIntro.jsx'
+import Countdown321 from '../components/Countdown321.jsx'
 import Podium from '../components/Podium.jsx'
-import PageBackground from '../components/PageBackground.jsx'
-import { BACKGROUNDS } from '../lib/backgrounds'
+import LiveReactions from '../components/LiveReactions.jsx'
+import SceneArt from '../components/SceneArt.jsx'
+import { ILLUSTRATIONS } from '../lib/illustrations'
 
 const STORAGE_KEY = 'titer-up:host-session'
 const CHOICE_TYPES = ['multiple_choice', 'true_false', 'poll']
@@ -45,6 +48,7 @@ export default function Host() {
   const [actionError, setActionError] = useState(null)
   const [players, setPlayers] = useState([])
   const [teamBoard, setTeamBoard] = useState([])
+  const [reactions, setReactions] = useState([])
 
   const [mcCounts, setMcCounts] = useState([])
   const [openAnswers, setOpenAnswers] = useState([])
@@ -55,15 +59,22 @@ export default function Host() {
   const [progress, setProgress] = useState(null)
 
   const endedRef = useRef(false)
+  const lastReactionAtRef = useRef(null)
 
   const { state, refresh } = useGameState(session?.code)
-  const showingIntro = useQuestionIntro(state?.question_id)
+  const phase = useQuestionPhases(state?.question_id)
 
   useEffect(() => {
     if (!session) {
       listQuizzes().then(setQuizzes).catch((e) => setQuizError(e.message))
     }
   }, [session])
+
+  useEffect(() => {
+    if (session?.id) {
+      lastReactionAtRef.current = new Date().toISOString()
+    }
+  }, [session?.id])
 
   const refreshPlayers = useCallback(() => {
     if (session?.id) {
@@ -77,6 +88,25 @@ export default function Host() {
   }, [refreshPlayers])
 
   useInterval(refreshPlayers, session?.id ? 1500 : null)
+
+  const pollReactions = useCallback(() => {
+    if (!session?.id || !lastReactionAtRef.current) return
+    getRecentReactions(session.id, lastReactionAtRef.current)
+      .then((rows) => {
+        if (!rows?.length) return
+        lastReactionAtRef.current = rows[rows.length - 1].created_at
+        const withPositions = rows.map((r) => ({ ...r, left: 10 + Math.random() * 80 }))
+        setReactions((prev) => [...prev, ...withPositions])
+        withPositions.forEach((r) => {
+          setTimeout(() => {
+            setReactions((prev) => prev.filter((x) => x.id !== r.id))
+          }, 3300)
+        })
+      })
+      .catch(() => {})
+  }, [session?.id])
+
+  useInterval(pollReactions, session?.id ? 1000 : null)
 
   const refreshProgress = useCallback(() => {
     if (session?.id && state?.question_id && state?.status === 'question') {
@@ -176,8 +206,8 @@ export default function Host() {
     setOrderResults([])
   }
 
-  const bgKey = !session
-    ? 'home'
+    const bgKey = !session
+    ? null
     : state?.status === 'question' || state?.status === 'question_end'
       ? 'question'
       : state?.status === 'finished'
@@ -185,9 +215,10 @@ export default function Host() {
         : 'lobby'
 
   return (
-    <PageBackground image={BACKGROUNDS[bgKey]}>
-    <div className="min-h-screen px-4 py-10">
-      <div className="max-w-3xl mx-auto">
+    <div className="min-h-screen bg-paper relative overflow-hidden px-4 py-10">
+      <SceneArt items={ILLUSTRATIONS[bgKey] || []} />
+      <LiveReactions reactions={reactions} />
+      <div className="max-w-3xl mx-auto relative z-10">
         <header className="flex items-center justify-between mb-8">
           <Link to="/" className="font-display font-bold text-2xl">
             Titer<span className="text-violet"> Up</span>
@@ -220,7 +251,7 @@ export default function Host() {
           </div>
         )}
 
-        {session && state?.status === 'question' && showingIntro && (
+        {session && state?.status === 'question' && phase === 'announce' && (
           <div className="flex flex-col gap-6">
             <QuestionHeader state={state} />
             <QuestionIntro
@@ -233,7 +264,14 @@ export default function Host() {
           </div>
         )}
 
-        {session && state?.status === 'question' && !showingIntro && (
+        {session && state?.status === 'question' && phase === 'countdown' && (
+          <div className="flex flex-col gap-6">
+            <QuestionHeader state={state} />
+            <Countdown321 seconds={3} />
+          </div>
+        )}
+
+        {session && state?.status === 'question' && phase === 'live' && (
           <div className="flex flex-col gap-6">
             <QuestionHeader state={state} />
             <div className="lab-panel p-6">
@@ -379,9 +417,8 @@ export default function Host() {
             </button>
           </div>
         )}
-      </div>
+           </div>
     </div>
-    </PageBackground>
   )
 }
 

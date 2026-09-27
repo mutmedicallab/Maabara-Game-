@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { joinGame, submitAnswer, getPlayers, getTeamLeaderboard } from '../lib/game'
+import { joinGame, submitAnswer, getPlayers, getTeamLeaderboard, sendReaction } from '../lib/game'
 import { useGameState } from '../hooks/useGameState'
 import { useInterval } from '../hooks/useInterval'
-import { useQuestionIntro } from '../hooks/useQuestionIntro'
+import { useQuestionPhases } from '../hooks/useQuestionPhases'
 import Timer from '../components/Timer.jsx'
 import OptionGrid from '../components/OptionGrid.jsx'
 import TextAnswerInput from '../components/TextAnswerInput.jsx'
@@ -12,10 +12,12 @@ import OrderPuzzle from '../components/OrderPuzzle.jsx'
 import Leaderboard from '../components/Leaderboard.jsx'
 import TeamLeaderboard from '../components/TeamLeaderboard.jsx'
 import QuestionIntro from '../components/QuestionIntro.jsx'
+import Countdown321 from '../components/Countdown321.jsx'
 import Podium from '../components/Podium.jsx'
 import RankGap from '../components/RankGap.jsx'
-import PageBackground from '../components/PageBackground.jsx'
-import { BACKGROUNDS } from '../lib/backgrounds'
+import ReactionBar from '../components/ReactionBar.jsx'
+import SceneArt from '../components/SceneArt.jsx'
+import { ILLUSTRATIONS } from '../lib/illustrations'
 
 const STORAGE_KEY = 'titer-up:player-session'
 const CHOICE_TYPES = ['multiple_choice', 'true_false', 'poll']
@@ -34,7 +36,7 @@ export default function Join() {
   const answeringRef = useRef(false)
 
   const { state, refresh } = useGameState(session?.code)
-  const showingIntro = useQuestionIntro(state?.question_id)
+  const phase = useQuestionPhases(state?.question_id)
 
   useEffect(() => {
     setPending([])
@@ -71,6 +73,10 @@ export default function Join() {
     setPending((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]))
   }
 
+  function handleReact(emoji) {
+    sendReaction(session.game_id, session.player_id, emoji).catch(() => {})
+  }
+
   function handleLeave() {
     sessionStorage.removeItem(STORAGE_KEY)
     setSession(null)
@@ -91,10 +97,10 @@ export default function Join() {
         ? 'results'
         : 'lobby'
 
-  return (
-    <PageBackground image={BACKGROUNDS[bgKey]}>
-    <div className="min-h-screen px-4 py-10">
-      <div className="max-w-lg mx-auto">
+   return (
+    <div className="min-h-screen bg-paper relative overflow-hidden px-4 py-10">
+      <SceneArt items={ILLUSTRATIONS[bgKey] || []} />
+      <div className="max-w-lg mx-auto relative z-10">
         <header className="flex items-center justify-between mb-8">
           <Link to="/" className="font-display font-bold text-2xl">
             Titer<span className="text-violet"> Up</span>
@@ -114,7 +120,7 @@ export default function Join() {
           </div>
         )}
 
-        {state?.status === 'question' && state.question_id && showingIntro && (
+        {state?.status === 'question' && state.question_id && phase === 'announce' && (
           <QuestionIntro
             questionType={state.question_type}
             pointsMultiplier={state.points_multiplier}
@@ -124,7 +130,11 @@ export default function Join() {
           />
         )}
 
-        {state?.status === 'question' && !currentAnswer && state.question_id && !showingIntro && (
+        {state?.status === 'question' && state.question_id && phase === 'countdown' && (
+          <Countdown321 seconds={3} />
+        )}
+
+        {state?.status === 'question' && !currentAnswer && state.question_id && phase === 'live' && (
           <div className="flex flex-col gap-6">
             <Timer startedAt={state.question_started_at} limitSeconds={state.time_limit} />
             <p className="font-display font-semibold text-xl">{state.question_text}</p>
@@ -169,7 +179,7 @@ export default function Join() {
           </div>
         )}
 
-        {state?.status === 'question' && currentAnswer && !showingIntro && (
+        {state?.status === 'question' && currentAnswer && phase === 'live' && (
           <div className="lab-panel p-8 text-center">
             <p className="font-display font-semibold text-xl mb-2">Answer locked in</p>
             <p className="text-ink/60">Waiting for the timer to run out…</p>
@@ -231,6 +241,8 @@ export default function Join() {
               Score so far: <span className="text-ink tabular">{me?.score ?? 0}</span>
             </p>
 
+            <ReactionBar onSend={handleReact} />
+
             {state.team_mode ? (
               <TeamLeaderboard teams={teamBoard} highlightTeamName={session.teamName} title="Team standings" />
             ) : (
@@ -249,6 +261,7 @@ export default function Join() {
               <h2 className="font-display font-bold text-3xl">{state.quiz_title}</h2>
             </div>
             <Podium players={players} highlightPlayerId={session.player_id} />
+            <ReactionBar onSend={handleReact} />
             {state.team_mode ? (
               <TeamLeaderboard teams={teamBoard} highlightTeamName={session.teamName} title="Final team standings" />
             ) : (
@@ -262,9 +275,8 @@ export default function Join() {
             </button>
           </div>
         )}
-      </div>
+            </div>
     </div>
-    </PageBackground>
   )
 }
 
@@ -325,10 +337,10 @@ function JoinForm({ defaultCode, onJoined }) {
     }
   }
 
-  return (
-    <PageBackground image={BACKGROUNDS.join}>
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
+    return (
+    <div className="min-h-screen bg-paper relative overflow-hidden flex items-center justify-center px-4">
+      <SceneArt items={ILLUSTRATIONS.join} />
+      <div className="w-full max-w-sm relative z-10">
         <Link to="/" className="font-display font-bold text-2xl block text-center mb-8">
           Titer<span className="text-violet"> Up</span>
         </Link>
@@ -379,9 +391,8 @@ function JoinForm({ defaultCode, onJoined }) {
             {submitting ? 'Joining…' : 'Join game'}
           </button>
         </form>
-      </div>
+            </div>
     </div>
-    </PageBackground>
   )
 }
 

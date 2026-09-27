@@ -94,3 +94,8 @@ export const getAnswerProgress = async (gameId, questionId) => {
   const rows = await call('get_answer_progress', { p_game_id: gameId, p_question_id: questionId })
   return rows?.[0] ?? null
 }
+export const sendReaction = (gameId, playerId, emoji) =>
+  call('send_reaction', { p_game_id: gameId, p_player_id: playerId, p_emoji: emoji })
+
+export const getRecentReactions = (gameId, sinceIso) =>
+  call('get_recent_reactions', { p_game_id: gameId, p_since: sinceIso })
