@@ -97,8 +97,11 @@ export default function Join() {
         ? 'results'
         : 'lobby'
 
-     return (
-    <div className={`min-h-screen relative overflow-hidden px-4 py-10 ${PAGE_GRADIENTS[bgKey] || 'bg-paper'}`}>
+      return (
+    <div
+      data-theme={state?.theme || 'lab'}
+      className={`min-h-screen relative overflow-hidden px-4 py-10 ${PAGE_GRADIENTS[bgKey] || 'bg-paper'}`}
+    >
       <SceneArt items={ILLUSTRATIONS[bgKey] || []} />
       <div className="max-w-lg mx-auto relative z-10">
         <header className="flex items-center justify-between mb-8">

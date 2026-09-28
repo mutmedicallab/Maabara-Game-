@@ -66,6 +66,35 @@ body {
 .animate-bomb-shake {
   animation: bomb-shake 0.4s ease-in-out 3;
 }
+
+/* ---- Quiz-level color themes ----
+   Every color utility in the app (bg-violet, text-safranin, the from-/to-
+   gradient stops, everything) reads these four variables at runtime, not
+   a hardcoded hex -- so overriding them on a scoped ancestor element
+   repaints the whole subtree automatically, no component changes needed.
+   "lab" is the default (no override block -- it just uses the base @theme
+   values above). */
+[data-theme="ocean"] {
+  --color-violet: #2563eb;
+  --color-violet-dim: #1e3a8a;
+  --color-safranin: #06b6d4;
+  --color-culture: #14b8a6;
+  --color-amber: #38bdf8;
+}
+[data-theme="sunset"] {
+  --color-violet: #db2777;
+  --color-violet-dim: #9d174d;
+  --color-safranin: #f97316;
+  --color-culture: #f59e0b;
+  --color-amber: #fb923c;
+}
+[data-theme="forest"] {
+  --color-violet: #15803d;
+  --color-violet-dim: #14532d;
+  --color-safranin: #b45309;
+  --color-culture: #65a30d;
+  --color-amber: #ca8a04;
+}
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.001ms !important;

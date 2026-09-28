@@ -10,18 +10,19 @@ async function call(fn, args = {}) {
 
 export const listQuizzesForBuilder = () => call('list_quizzes')
 
-export const saveNewQuiz = (title, questions, passcode) =>
-  call('save_quiz', { p_title: title, p_questions: questions, p_passcode: passcode })
+export const saveNewQuiz = (title, questions, passcode, theme = 'lab') =>
+  call('save_quiz', { p_title: title, p_questions: questions, p_passcode: passcode, p_theme: theme })
 
 export const getQuizForEdit = (quizId, passcode) =>
   call('get_quiz_for_edit', { p_quiz_id: quizId, p_passcode: passcode })
 
-export const replaceQuizQuestions = (quizId, title, questions, passcode) =>
+export const replaceQuizQuestions = (quizId, title, questions, passcode, theme = 'lab') =>
   call('replace_quiz_questions', {
     p_quiz_id: quizId,
     p_title: title,
     p_questions: questions,
     p_passcode: passcode,
+    p_theme: theme,
   })
 
 export const deleteQuiz = (quizId, passcode) =>

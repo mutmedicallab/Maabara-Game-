@@ -22,6 +22,13 @@ const TYPE_LABELS = {
 
 const GRADED_TYPES = ['multiple_choice', 'true_false', 'open_ended', 'order']
 
+const THEME_META = {
+  lab: { label: 'Lab', colors: ['#7c3aed', '#e4572e', '#22c55e', '#f5a623'] },
+  ocean: { label: 'Ocean', colors: ['#2563eb', '#06b6d4', '#14b8a6', '#38bdf8'] },
+  sunset: { label: 'Sunset', colors: ['#db2777', '#f97316', '#f59e0b', '#fb923c'] },
+  forest: { label: 'Forest', colors: ['#15803d', '#b45309', '#65a30d', '#ca8a04'] },
+}
+
 function blankQuestion(type = 'multiple_choice') {
   return {
     question_type: type,
@@ -151,6 +158,7 @@ export default function Builder() {
 
   const [editingId, setEditingId] = useState(null)
   const [title, setTitle] = useState('')
+  const [theme, setTheme] = useState('lab')
   const [questions, setQuestions] = useState([])
   const [saving, setSaving] = useState(false)
 
@@ -171,10 +179,10 @@ export default function Builder() {
     sessionStorage.setItem(PASSCODE_KEY, passcode)
     setUnlocked(true)
   }
-
   function startNewQuiz() {
     setEditingId('new')
     setTitle('')
+    setTheme('lab')
     setQuestions([blankQuestion()])
     setError(null)
   }
@@ -183,21 +191,22 @@ export default function Builder() {
     setError(null)
     try {
       const data = await getQuizForEdit(quiz.id, passcode)
-      setEditingId(quiz.id)
+            setEditingId(quiz.id)
       setTitle(data.title)
+      setTheme(data.theme || 'lab')
       setQuestions((data.questions || []).map(fromServerQuestion))
     } catch (e) {
       setError(e.message.includes('INVALID_PASSCODE') ? 'Wrong passcode.' : e.message)
     }
   }
 
-  function cancelEdit() {
+    function cancelEdit() {
     setEditingId(null)
     setTitle('')
+    setTheme('lab')
     setQuestions([])
     setError(null)
   }
-
   function updateQuestion(index, patch) {
     setQuestions((prev) => prev.map((q, i) => (i === index ? { ...q, ...patch } : q)))
   }
@@ -270,10 +279,10 @@ export default function Builder() {
     setError(null)
     try {
       const payload = questions.map(toPayload)
-      if (editingId === 'new') {
-        await saveNewQuiz(title, payload, passcode)
+            if (editingId === 'new') {
+        await saveNewQuiz(title, payload, passcode, theme)
       } else {
-        await replaceQuizQuestions(editingId, title, payload, passcode)
+        await replaceQuizQuestions(editingId, title, payload, passcode, theme)
       }
       cancelEdit()
       refreshList()
@@ -371,12 +380,35 @@ export default function Builder() {
 
         {editingId !== null && (
           <div className="flex flex-col gap-6">
-            <input
+                        <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Quiz title"
               className="w-full px-4 py-3 border border-ink/20 focus:border-violet focus:outline-none font-display text-xl"
             />
+
+            <div>
+              <p className="font-mono text-xs uppercase tracking-wide text-ink/50 mb-2">Color theme</p>
+              <div className="flex gap-2 flex-wrap">
+                {Object.entries(THEME_META).map(([key, meta]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setTheme(key)}
+                    className={`flex items-center gap-2 px-3 py-2 border text-sm ${
+                      theme === key ? 'border-ink bg-ink/5' : 'border-ink/20 hover:border-ink/40'
+                    }`}
+                  >
+                    <span className="flex gap-0.5">
+                      {meta.colors.map((c) => (
+                        <span key={c} className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: c }} />
+                      ))}
+                    </span>
+                    {meta.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             {questions.map((q, qi) => (
               <QuestionEditor

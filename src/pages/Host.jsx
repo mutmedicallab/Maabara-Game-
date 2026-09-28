@@ -214,8 +214,11 @@ export default function Host() {
         ? 'results'
         : 'lobby'
 
-    return (
-    <div className={`min-h-screen relative overflow-hidden px-4 py-10 ${bgKey ? PAGE_GRADIENTS[bgKey] || 'bg-paper' : 'bg-ink'}`}>
+      return (
+    <div
+      data-theme={state?.theme || 'lab'}
+      className={`min-h-screen relative overflow-hidden px-4 py-10 ${bgKey ? PAGE_GRADIENTS[bgKey] || 'bg-paper' : 'bg-ink'}`}
+    >
       <SceneArt items={ILLUSTRATIONS[bgKey] || []} />
       <LiveReactions reactions={reactions} />
       <div className="max-w-3xl mx-auto relative z-10">
