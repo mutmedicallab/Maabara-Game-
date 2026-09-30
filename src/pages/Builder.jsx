@@ -306,7 +306,7 @@ export default function Builder() {
 
   if (!unlocked) {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4">
+            <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-ink to-violet-dim">
         <form onSubmit={handleUnlock} className="w-full max-w-sm lab-panel p-6 flex flex-col gap-4">
           <p className="font-mono text-xs uppercase tracking-wide text-ink/50">Quiz builder</p>
           <input
@@ -329,13 +329,11 @@ export default function Builder() {
   }
 
   return (
-    <div className="min-h-screen px-4 py-10">
+        <div className="min-h-screen px-4 py-10 bg-gradient-to-br from-ink to-violet-dim">
       <div className="max-w-2xl mx-auto">
         <header className="flex items-center justify-between mb-8">
-          <Link to="/" className="font-display font-bold text-2xl">
-            Syn<span className="text-violet">apse</span>
-          </Link>
-          <span className="font-mono text-xs uppercase tracking-wide text-ink/50">Quiz builder</span>
+          <Link to="/" className="font-display font-bold text-2xl"></Link>
+                    <span className="font-mono text-xs uppercase tracking-wide text-white/70">Quiz builder</span>
         </header>
 
         {error && (
@@ -373,7 +371,7 @@ export default function Builder() {
                   </div>
                 </div>
               ))}
-              {!loadingList && quizzes.length === 0 && <p className="text-ink/50 text-sm">No quizzes yet.</p>}
+                            {!loadingList && quizzes.length === 0 && <p className="text-white/60 text-sm">No quizzes yet.</p>}
             </div>
           </div>
         )}

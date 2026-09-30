@@ -27,6 +27,7 @@ import OptionGrid from '../components/OptionGrid.jsx'
 import Leaderboard from '../components/Leaderboard.jsx'
 import TeamLeaderboard from '../components/TeamLeaderboard.jsx'
 import PlayerListEditable from '../components/PlayerListEditable.jsx'
+import { downloadCSV } from '../lib/csv'
 import WordCloud from '../components/WordCloud.jsx'
 import QuestionIntro from '../components/QuestionIntro.jsx'
 import Countdown321 from '../components/Countdown321.jsx'
@@ -162,13 +163,31 @@ export default function Host() {
     }
   }
 
-  async function handleRemovePlayer(playerId, nickname) {
+    async function handleRemovePlayer(playerId, nickname) {
     if (!confirm(`Remove ${nickname} from the game?`)) return
     try {
       await removePlayer(session.id, playerId, session.host_token)
       refreshPlayers()
     } catch (e) {
       setActionError(e.message)
+    }
+  }
+
+  function handleDownloadCSV() {
+    const safeName = (state?.quiz_title || 'quiz').toLowerCase().replace(/[^a-z0-9]+/g, '-')
+    if (state?.team_mode) {
+      const sorted = [...teamBoard].sort((a, b) => b.total_score - a.total_score)
+      const rows = sorted.map((t, i) => ({
+        Rank: i + 1,
+        Team: t.team_name,
+        Players: t.member_count,
+        Score: t.total_score,
+      }))
+      downloadCSV(`${safeName}-team-results.csv`, rows)
+    } else {
+      const sorted = [...players].sort((a, b) => b.score - a.score)
+      const rows = sorted.map((p, i) => ({ Rank: i + 1, Nickname: p.nickname, Score: p.score }))
+      downloadCSV(`${safeName}-results.csv`, rows)
     }
   }
 
@@ -398,16 +417,22 @@ export default function Host() {
                 </div>
               )}
             </div>
-            {state.team_mode ? (
-              <TeamLeaderboard teams={teamBoard} title="Team standings" />
+                        {state.team_mode ? (
+              <TeamLeaderboard teams={teamBoard} title="Final team standings" />
             ) : (
-              <Leaderboard players={players} title="Standings" />
+              <Leaderboard players={players} title="Final standings" />
             )}
             <button
-              onClick={handleNext}
-              className="bg-violet text-white font-display font-semibold text-lg px-6 py-4 hover:bg-violet-dim transition-colors"
+              onClick={handleDownloadCSV}
+              className="lab-panel px-6 py-3 font-mono text-sm uppercase tracking-wide hover:bg-ink hover:text-paper transition-colors"
             >
-              {state.current_question_index + 1 >= state.total_questions ? 'Show final results' : 'Next question'}
+              Download results (CSV)
+            </button>
+            <button
+              onClick={handleNewGame}
+              className="lab-panel px-6 py-4 font-display font-semibold hover:bg-ink hover:text-paper transition-colors"
+            >
+              Start a new game
             </button>
           </div>
         )}

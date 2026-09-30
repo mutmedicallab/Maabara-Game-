@@ -6,6 +6,7 @@ export const PAGE_GRADIENTS = {
   question: 'bg-gradient-to-br from-violet to-safranin',
   results: 'bg-gradient-to-br from-culture to-amber',
   join: 'bg-gradient-to-br from-amber to-safranin',
+  build: 'bg-gradient-to-br from-ink to-violet-dim',
 }
 
 export const ILLUSTRATIONS = {
