@@ -16,6 +16,7 @@ import {
   getOrderResults,
   getAnswerProgress,
   getRecentReactions,
+  removePlayer
 } from '../lib/game'
 import { useGameState } from '../hooks/useGameState'
 import { useInterval } from '../hooks/useInterval'
@@ -25,6 +26,7 @@ import Timer from '../components/Timer.jsx'
 import OptionGrid from '../components/OptionGrid.jsx'
 import Leaderboard from '../components/Leaderboard.jsx'
 import TeamLeaderboard from '../components/TeamLeaderboard.jsx'
+import PlayerListEditable from '../components/PlayerListEditable.jsx'
 import WordCloud from '../components/WordCloud.jsx'
 import QuestionIntro from '../components/QuestionIntro.jsx'
 import Countdown321 from '../components/Countdown321.jsx'
@@ -151,10 +153,20 @@ export default function Host() {
     }
   }
 
-  async function handleStart() {
+    async function handleStart() {
     try {
       await startGame(session.id, session.host_token)
       refresh()
+    } catch (e) {
+      setActionError(e.message)
+    }
+  }
+
+  async function handleRemovePlayer(playerId, nickname) {
+    if (!confirm(`Remove ${nickname} from the game?`)) return
+    try {
+      await removePlayer(session.id, playerId, session.host_token)
+      refreshPlayers()
     } catch (e) {
       setActionError(e.message)
     }
@@ -241,9 +253,9 @@ export default function Host() {
 
         {session && state?.status === 'lobby' && (
           <div className="flex flex-col gap-6">
-            <ModeBadges state={state} />
+                        <ModeBadges state={state} />
             <CodeDisplay code={session.code} />
-            <Leaderboard players={players} title="Players in the room" />
+            <PlayerListEditable players={players} onRemove={handleRemovePlayer} />
             <button
               onClick={handleStart}
               disabled={players.length === 0}
