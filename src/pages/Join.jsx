@@ -25,10 +25,25 @@ const UNGRADED_TYPES = ['scale', 'poll', 'word_cloud']
 
 export default function Join() {
   const [params] = useSearchParams()
+
   const [session, setSession] = useState(() => {
-    const raw = sessionStorage.getItem(STORAGE_KEY)
-    return raw ? JSON.parse(raw) : null
+    try {
+      const raw = sessionStorage.getItem(STORAGE_KEY)
+      if (!raw) return null
+      const saved = JSON.parse(raw)
+      // A different room code in the URL always wins over a stored session.
+      const urlCode = params.get('code')?.trim().toUpperCase()
+      if (urlCode && urlCode !== saved.code) {
+        sessionStorage.removeItem(STORAGE_KEY)
+        return null
+      }
+      return saved
+    } catch {
+      sessionStorage.removeItem(STORAGE_KEY)
+      return null
+    }
   })
+
   const [players, setPlayers] = useState([])
   const [teamBoard, setTeamBoard] = useState([])
   const [answered, setAnswered] = useState({})
@@ -37,6 +52,18 @@ export default function Join() {
 
   const { state, refresh } = useGameState(session?.code)
   const phase = useQuestionPhases(state?.question_id)
+
+  // Answers are keyed by game + question so they can never leak between games,
+  // even when two games use the same quiz (same question ids).
+  const answerKey = (questionId) => `${session?.game_id}:${questionId}`
+
+  // Once the game is finished, stop persisting it so a refresh or return
+  // visit doesn't bring the player back to the old results screen.
+  useEffect(() => {
+    if (state?.status === 'finished') {
+      sessionStorage.removeItem(STORAGE_KEY)
+    }
+  }, [state?.status])
 
   useEffect(() => {
     setPending([])
@@ -56,11 +83,12 @@ export default function Join() {
   useInterval(refreshPlayers, session?.game_id ? 1500 : null)
 
   async function handleAnswer(questionId, payload) {
-    if (answeringRef.current || answered[questionId]) return
+    const key = answerKey(questionId)
+    if (answeringRef.current || answered[key]) return
     answeringRef.current = true
     try {
       const result = await submitAnswer(session.game_id, session.player_id, questionId, payload)
-      setAnswered((prev) => ({ ...prev, [questionId]: { payload, result } }))
+      setAnswered((prev) => ({ ...prev, [key]: { payload, result } }))
       refreshPlayers()
     } catch (e) {
       console.error(e)
@@ -81,13 +109,16 @@ export default function Join() {
     sessionStorage.removeItem(STORAGE_KEY)
     setSession(null)
     setAnswered({})
+    setPending([])
+    setPlayers([])
+    setTeamBoard([])
   }
 
   if (!session) {
     return <JoinForm defaultCode={params.get('code') || ''} onJoined={setSession} />
   }
 
-  const currentAnswer = state?.question_id ? answered[state.question_id] : null
+  const currentAnswer = state?.question_id ? answered[answerKey(state.question_id)] : null
   const me = players.find((p) => p.id === session.player_id)
 
   const bgKey =
@@ -97,7 +128,7 @@ export default function Join() {
         ? 'results'
         : 'lobby'
 
-      return (
+  return (
     <div
       data-theme={state?.theme || 'lab'}
       className={`min-h-screen relative overflow-hidden px-4 py-10 ${PAGE_GRADIENTS[bgKey] || 'bg-paper'}`}
@@ -108,13 +139,20 @@ export default function Join() {
           <Link to="/" className="font-display font-bold text-2xl">
             Titer<span className="text-violet"> Up</span>
           </Link>
-                    <span className="font-mono text-xs text-white/70 text-right">
+          <span className="font-mono text-xs text-white/70 text-right">
             {session.nickname}
             {session.teamName && <span className="block text-white/50">{session.teamName}</span>}
           </span>
         </header>
 
-        {!state && <p className="text-ink/50 text-sm">Connecting…</p>}
+        {!state && (
+          <div className="text-center">
+            <p className="text-white/60 text-sm mb-3">Connecting…</p>
+            <button onClick={handleLeave} className="text-white/70 underline text-sm">
+              Join a different game
+            </button>
+          </div>
+        )}
 
         {state?.status === 'lobby' && (
           <div className="lab-panel p-6 text-center">
@@ -239,7 +277,7 @@ export default function Join() {
               </div>
             )}
 
-                        <ResultBanner answer={currentAnswer} scoreless={UNGRADED_TYPES.includes(state.question_type)} />
+            <ResultBanner answer={currentAnswer} scoreless={UNGRADED_TYPES.includes(state.question_type)} />
             <p className="text-center font-mono text-sm text-white/80">
               Score so far: <span className="text-white font-semibold tabular">{me?.score ?? 0}</span>
             </p>
@@ -259,7 +297,7 @@ export default function Join() {
 
         {state?.status === 'finished' && (
           <div className="flex flex-col gap-6">
-                        <div className="text-center py-4">
+            <div className="text-center py-4">
               <p className="font-mono text-xs uppercase tracking-wide text-white/70 mb-1">Final results</p>
               <h2 className="font-display font-bold text-3xl text-white">{state.quiz_title}</h2>
             </div>
@@ -274,11 +312,11 @@ export default function Join() {
               onClick={handleLeave}
               className="lab-panel px-6 py-4 font-display font-semibold hover:bg-ink hover:text-paper transition-colors"
             >
-              Leave game
+              Join another game
             </button>
           </div>
         )}
-            </div>
+      </div>
     </div>
   )
 }
@@ -331,7 +369,7 @@ function JoinForm({ defaultCode, onJoined }) {
         nickname: nickname.trim(),
         teamName: teamName.trim() || null,
       }
-      sessionStorage.setItem('synapse:player-session', JSON.stringify(session))
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session))
       onJoined(session)
     } catch (e2) {
       setError(friendlyError(e2.message))
@@ -340,7 +378,7 @@ function JoinForm({ defaultCode, onJoined }) {
     }
   }
 
-      return (
+  return (
     <div className={`min-h-screen relative overflow-hidden flex items-center justify-center px-4 ${PAGE_GRADIENTS.join}`}>
       <SceneArt items={ILLUSTRATIONS.join} />
       <div className="w-full max-w-sm relative z-10">
@@ -394,7 +432,7 @@ function JoinForm({ defaultCode, onJoined }) {
             {submitting ? 'Joining…' : 'Join game'}
           </button>
         </form>
-            </div>
+      </div>
     </div>
   )
 }

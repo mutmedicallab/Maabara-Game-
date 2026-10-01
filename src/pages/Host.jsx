@@ -16,8 +16,9 @@ import {
   getOrderResults,
   getAnswerProgress,
   getRecentReactions,
-  removePlayer
+  removePlayer,
 } from '../lib/game'
+import { downloadCSV } from '../lib/csv'
 import { useGameState } from '../hooks/useGameState'
 import { useInterval } from '../hooks/useInterval'
 import { useQuestionPhases } from '../hooks/useQuestionPhases'
@@ -27,7 +28,6 @@ import OptionGrid from '../components/OptionGrid.jsx'
 import Leaderboard from '../components/Leaderboard.jsx'
 import TeamLeaderboard from '../components/TeamLeaderboard.jsx'
 import PlayerListEditable from '../components/PlayerListEditable.jsx'
-import { downloadCSV } from '../lib/csv'
 import WordCloud from '../components/WordCloud.jsx'
 import QuestionIntro from '../components/QuestionIntro.jsx'
 import Countdown321 from '../components/Countdown321.jsx'
@@ -41,8 +41,13 @@ const CHOICE_TYPES = ['multiple_choice', 'true_false', 'poll']
 
 export default function Host() {
   const [session, setSession] = useState(() => {
-    const raw = sessionStorage.getItem(STORAGE_KEY)
-    return raw ? JSON.parse(raw) : null
+    try {
+      const raw = sessionStorage.getItem(STORAGE_KEY)
+      return raw ? JSON.parse(raw) : null
+    } catch {
+      sessionStorage.removeItem(STORAGE_KEY)
+      return null
+    }
   })
 
   const [quizzes, setQuizzes] = useState([])
@@ -66,6 +71,14 @@ export default function Host() {
 
   const { state, refresh } = useGameState(session?.code)
   const phase = useQuestionPhases(state?.question_id)
+
+  // Once the game is finished, stop persisting it so a refresh or
+  // return visit doesn't bring the host back to the old results screen.
+  useEffect(() => {
+    if (state?.status === 'finished') {
+      sessionStorage.removeItem(STORAGE_KEY)
+    }
+  }, [state?.status])
 
   useEffect(() => {
     if (!session) {
@@ -154,7 +167,7 @@ export default function Host() {
     }
   }
 
-    async function handleStart() {
+  async function handleStart() {
     try {
       await startGame(session.id, session.host_token)
       refresh()
@@ -163,31 +176,13 @@ export default function Host() {
     }
   }
 
-    async function handleRemovePlayer(playerId, nickname) {
+  async function handleRemovePlayer(playerId, nickname) {
     if (!confirm(`Remove ${nickname} from the game?`)) return
     try {
       await removePlayer(session.id, playerId, session.host_token)
       refreshPlayers()
     } catch (e) {
       setActionError(e.message)
-    }
-  }
-
-  function handleDownloadCSV() {
-    const safeName = (state?.quiz_title || 'quiz').toLowerCase().replace(/[^a-z0-9]+/g, '-')
-    if (state?.team_mode) {
-      const sorted = [...teamBoard].sort((a, b) => b.total_score - a.total_score)
-      const rows = sorted.map((t, i) => ({
-        Rank: i + 1,
-        Team: t.team_name,
-        Players: t.member_count,
-        Score: t.total_score,
-      }))
-      downloadCSV(`${safeName}-team-results.csv`, rows)
-    } else {
-      const sorted = [...players].sort((a, b) => b.score - a.score)
-      const rows = sorted.map((p, i) => ({ Rank: i + 1, Nickname: p.nickname, Score: p.score }))
-      downloadCSV(`${safeName}-results.csv`, rows)
     }
   }
 
@@ -224,11 +219,32 @@ export default function Host() {
     }
   }
 
+  function handleDownloadCSV() {
+    const safeName = (state?.quiz_title || 'quiz').toLowerCase().replace(/[^a-z0-9]+/g, '-')
+    if (state?.team_mode) {
+      const sorted = [...teamBoard].sort((a, b) => b.total_score - a.total_score)
+      const rows = sorted.map((t, i) => ({
+        Rank: i + 1,
+        Team: t.team_name,
+        Players: t.member_count,
+        Score: t.total_score,
+      }))
+      downloadCSV(`${safeName}-team-results.csv`, rows)
+    } else {
+      const sorted = [...players].sort((a, b) => b.score - a.score)
+      const rows = sorted.map((p, i) => ({ Rank: i + 1, Nickname: p.nickname, Score: p.score }))
+      downloadCSV(`${safeName}-results.csv`, rows)
+    }
+  }
+
   function handleNewGame() {
     sessionStorage.removeItem(STORAGE_KEY)
     setSession(null)
     setPlayers([])
     setTeamBoard([])
+    setReactions([])
+    setProgress(null)
+    setActionError(null)
     setMcCounts([])
     setOpenAnswers([])
     setScaleStats(null)
@@ -237,7 +253,7 @@ export default function Host() {
     setOrderResults([])
   }
 
-    const bgKey = !session
+  const bgKey = !session
     ? null
     : state?.status === 'question' || state?.status === 'question_end'
       ? 'question'
@@ -245,7 +261,7 @@ export default function Host() {
         ? 'results'
         : 'lobby'
 
-      return (
+  return (
     <div
       data-theme={state?.theme || 'lab'}
       className={`min-h-screen relative overflow-hidden px-4 py-10 ${bgKey ? PAGE_GRADIENTS[bgKey] || 'bg-paper' : 'bg-ink'}`}
@@ -254,8 +270,8 @@ export default function Host() {
       <LiveReactions reactions={reactions} />
       <div className="max-w-3xl mx-auto relative z-10">
         <header className="flex items-center justify-between mb-8">
-          <Link to="/" className="font-display font-bold text-2xl">
-            Syn<span className="text-violet">apse</span>
+          <Link to="/" className="font-display font-bold text-2xl text-white">
+            Syn<span className="text-amber">apse</span>
           </Link>
           <span className="font-mono text-xs uppercase tracking-wide text-white/70">Host console</span>
         </header>
@@ -272,7 +288,7 @@ export default function Host() {
 
         {session && state?.status === 'lobby' && (
           <div className="flex flex-col gap-6">
-                        <ModeBadges state={state} />
+            <ModeBadges state={state} />
             <CodeDisplay code={session.code} />
             <PlayerListEditable players={players} onRemove={handleRemovePlayer} />
             <button
@@ -417,7 +433,29 @@ export default function Host() {
                 </div>
               )}
             </div>
-                        {state.team_mode ? (
+            {state.team_mode ? (
+              <TeamLeaderboard teams={teamBoard} title="Team standings" />
+            ) : (
+              <Leaderboard players={players} title="Standings" />
+            )}
+            <button
+              onClick={handleNext}
+              className="bg-violet text-white font-display font-semibold text-lg px-6 py-4 hover:bg-violet-dim transition-colors"
+            >
+              {state.current_question_index + 1 >= state.total_questions ? 'Show final results' : 'Next question'}
+            </button>
+          </div>
+        )}
+
+        {session && state?.status === 'finished' && (
+          <div className="flex flex-col gap-6">
+            <Confetti />
+            <div className="text-center py-4">
+              <p className="font-mono text-xs uppercase tracking-wide text-white/70 mb-1">Final results</p>
+              <h2 className="font-display font-bold text-3xl text-white">{state.quiz_title}</h2>
+            </div>
+            <Podium players={players} />
+            {state.team_mode ? (
               <TeamLeaderboard teams={teamBoard} title="Final team standings" />
             ) : (
               <Leaderboard players={players} title="Final standings" />
@@ -436,28 +474,7 @@ export default function Host() {
             </button>
           </div>
         )}
-
-        {session && state?.status === 'finished' && (
-          <div className="flex flex-col gap-6">
-                        <div className="text-center py-4">
-              <p className="font-mono text-xs uppercase tracking-wide text-white/70 mb-1">Final results</p>
-              <h2 className="font-display font-bold text-3xl text-white">{state.quiz_title}</h2>
-            </div>
-            <Podium players={players} />
-            {state.team_mode ? (
-              <TeamLeaderboard teams={teamBoard} title="Final team standings" />
-            ) : (
-              <Leaderboard players={players} title="Final standings" />
-            )}
-            <button
-              onClick={handleNewGame}
-              className="lab-panel px-6 py-4 font-display font-semibold hover:bg-ink hover:text-paper transition-colors"
-            >
-              Start a new game
-            </button>
-          </div>
-        )}
-           </div>
+      </div>
     </div>
   )
 }
@@ -466,7 +483,7 @@ function ModeBadges({ state }) {
   if (state.scoring_mode !== 'accuracy' && !state.team_mode) return null
   return (
     <div className="flex gap-2 justify-center flex-wrap">
-            {state.scoring_mode === 'accuracy' && (
+      {state.scoring_mode === 'accuracy' && (
         <span className="font-mono text-xs uppercase tracking-wide bg-white/15 text-white border border-white/30 px-3 py-1">
           Accuracy Mode
         </span>
@@ -514,8 +531,8 @@ function QuizPicker({ quizzes, error, creating, onPick }) {
 
   return (
     <div>
-      <h1 className="font-display font-semibold text-2xl mb-1">Pick a deck</h1>
-            <p className="text-white/60 mb-6">You'll get a room code on the next screen.</p>
+      <h1 className="font-display font-semibold text-2xl mb-1 text-white">Pick a deck</h1>
+      <p className="text-white/60 mb-6">You'll get a room code on the next screen.</p>
 
       <div className="lab-panel p-5 mb-6 flex flex-col gap-4">
         <div>
@@ -567,7 +584,7 @@ function QuizPicker({ quizzes, error, creating, onPick }) {
             <span className="font-mono text-xs tabular opacity-70">{q.question_count} Q</span>
           </button>
         ))}
-          {quizzes.length === 0 && !error && <p className="text-white/50 text-sm">Loading decks…</p>}
+        {quizzes.length === 0 && !error && <p className="text-white/50 text-sm">Loading decks…</p>}
       </div>
     </div>
   )
