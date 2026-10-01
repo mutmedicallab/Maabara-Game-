@@ -449,7 +449,7 @@ export default function Host() {
 
         {session && state?.status === 'finished' && (
           <div className="flex flex-col gap-6">
-            <Confetti />
+            
             <div className="text-center py-4">
               <p className="font-mono text-xs uppercase tracking-wide text-white/70 mb-1">Final results</p>
               <h2 className="font-display font-bold text-3xl text-white">{state.quiz_title}</h2>
