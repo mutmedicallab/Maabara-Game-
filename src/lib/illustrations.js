@@ -3,7 +3,7 @@
 // lab-panel cards sit on top and stay readable regardless.
 export const PAGE_GRADIENTS = {
   lobby: 'bg-gradient-to-br from-violet to-violet-dim',
-  question: 'bg-gradient-to-br from-violet to-safranin',
+  question: 'bg-gradient-to-br from-violet-dim to-ink',
   results: 'bg-gradient-to-br from-culture to-amber',
   join: 'bg-gradient-to-br from-amber to-safranin',
   build: 'bg-gradient-to-br from-ink to-violet-dim',

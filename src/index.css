@@ -81,19 +81,19 @@ body {
   --color-culture: #14b8a6;
   --color-amber: #38bdf8;
 }
+[data-theme="ocean"] {
+  --color-violet: #4338ca;
+  --color-violet-dim: #312e81;
+  --color-safranin: #06b6d4;
+  --color-culture: #059669;
+  --color-amber: #fbbf24;
+}
 [data-theme="sunset"] {
   --color-violet: #db2777;
   --color-violet-dim: #9d174d;
   --color-safranin: #f97316;
-  --color-culture: #f59e0b;
-  --color-amber: #fb923c;
-}
-[data-theme="forest"] {
-  --color-violet: #15803d;
-  --color-violet-dim: #14532d;
-  --color-safranin: #b45309;
-  --color-culture: #65a30d;
-  --color-amber: #ca8a04;
+  --color-culture: #facc15;
+  --color-amber: #dc2626;
 }
 @media (prefers-reduced-motion: reduce) {
   * {
