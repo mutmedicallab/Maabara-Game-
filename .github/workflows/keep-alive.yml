@@ -1,0 +1,14 @@
+name: Keep Supabase alive
+on:
+  schedule:
+    - cron: '0 6 */3 * *'   # every 3 days at 06:00 UTC
+  workflow_dispatch:
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase
+        run: |
+          curl -fsS "${{ secrets.https://dzgkvsqjkrbcoqafkuab.supabase.co }}/rest/v1/quizzes?select=id&limit=1" \
+            -H "apikey: ${{ secrets.sb_publishable_986_KAhjkf7DLpITL2r7FA_55Ru1Qov }}" \
+            -H "Authorization: Bearer ${{ secrets.sb_publishable_986_KAhjkf7DLpITL2r7FA_55Ru1Qov }}"
