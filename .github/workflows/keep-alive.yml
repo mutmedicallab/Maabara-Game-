@@ -13,10 +13,13 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-        run: |
+                run: |
           status=$(curl -s -o response.json -w "%{http_code}" \
-            "$SUPABASE_URL/rest/v1/quizzes?select=id&limit=1" \
+            -X POST "$SUPABASE_URL/rest/v1/rpc/keep_alive" \
             -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{}')
           echo "HTTP status: $status"
           cat response.json
           if [ "$status" -ne 200 ]; then
