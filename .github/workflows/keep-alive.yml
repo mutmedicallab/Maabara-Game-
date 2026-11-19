@@ -17,7 +17,6 @@ jobs:
           status=$(curl -s -o response.json -w "%{http_code}" \
             "$SUPABASE_URL/rest/v1/quizzes?select=id&limit=1" \
             -H "apikey: $SUPABASE_ANON_KEY" \
-            -H "Authorization: Bearer $SUPABASE_ANON_KEY")
           echo "HTTP status: $status"
           cat response.json
           if [ "$status" -ne 200 ]; then
