@@ -2,8 +2,8 @@ name: Keep Supabase alive
 
 on:
   schedule:
-    - cron: '0 3 */2 * *'   # every 2 days at 03:00 UTC (06:00 Nairobi)
-  workflow_dispatch:         # enables the manual "Run workflow" button
+    - cron: '0 3 */2 * *'
+  workflow_dispatch:
 
 jobs:
   ping:
@@ -13,7 +13,7 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-                run: |
+        run: |
           status=$(curl -s -o response.json -w "%{http_code}" \
             -X POST "$SUPABASE_URL/rest/v1/rpc/keep_alive" \
             -H "apikey: $SUPABASE_ANON_KEY" \
